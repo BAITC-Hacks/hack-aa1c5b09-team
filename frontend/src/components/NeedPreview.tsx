@@ -1,5 +1,6 @@
 import { CalendarDays, CheckCircle2, MapPin, Monitor, Sparkles, Tag, Wallet } from 'lucide-react';
 import type { NeedCard } from '../api/types';
+const extraFields = [{ key: 'materials', label: 'Данные и материалы' }, { key: 'successCriteria', label: 'Критерии успеха' }, { key: 'targetUsers', label: 'Пользователи решения' }, { key: 'businessContact', label: 'Связь с бизнесом' }, { key: 'consultationFormat', label: 'Формат консультаций' }, { key: 'feedbackProcedure', label: 'Порядок обратной связи' }] as const;
 import s from '../styles/App.module.css';
 
 export function NeedPreview({ card, drafting = false }: { card: NeedCard; drafting?: boolean }) {
@@ -11,6 +12,7 @@ export function NeedPreview({ card, drafting = false }: { card: NeedCard; drafti
     <div className={s.outcome}><h3><CheckCircle2 size={16} />Ожидаемый результат</h3><p className={!card.outcome ? s.muted : ''}>{card.outcome || 'Не указано'}</p></div>
     <dl className={s.metadata}>{metadata.map(({ icon: Icon, label, value }) => <div key={label}><dt><Icon size={15} />{label}</dt><dd className={!value ? s.muted : ''}>{value || 'Не указано'}</dd></div>)}</dl>
     {card.requirements && <div className={s.requirements}><h3>Дополнительные пожелания</h3><p>{card.requirements}</p></div>}
+    {extraFields.filter(field => card[field.key]).map(field => <div className={s.requirements} key={field.key}><h3>{field.label}</h3><p>{card[field.key]}</p></div>)}
     {drafting && <div className={s.previewNote}>Карточку видите только вы.<br />Перед публикацией можно всё изменить.</div>}
   </div>;
 }

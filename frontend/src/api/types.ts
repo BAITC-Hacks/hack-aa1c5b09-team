@@ -12,6 +12,21 @@ export interface NeedCard {
   format: string;
   location: string;
   requirements: string;
+  materials: string;
+  successCriteria: string;
+  targetUsers: string;
+  businessContact: string;
+  consultationFormat: string;
+  feedbackProcedure: string;
+}
+export type ReadinessCriterion = 'CONTEXT' | 'MATERIALS' | 'RESULT' | 'SUCCESS' | 'CONSTRAINTS' | 'USERS' | 'BUSINESS';
+export type ReadinessLevel = 'NEEDS_CLARIFICATION' | 'WORKABLE' | 'READY' | 'PRIORITY';
+export interface ReadinessRating {
+  score: number;
+  maxScore: number;
+  level: ReadinessLevel;
+  catalogPriority: number;
+  criteria: { criterion: ReadinessCriterion; label: string; description: string; weight: number; filled: boolean; confirmed: boolean; points: number }[];
 }
 export interface AiMessage { id: string; role: 'assistant' | 'user'; text: string }
 export interface NeedRequest {
@@ -27,6 +42,9 @@ export interface NeedRequest {
   updatedAt: string;
   offerCount: number;
   selectedOfferId?: string;
+  hasUnsavedCard?: boolean;
+  revision?: number;
+  readiness?: ReadinessRating;
 }
 export interface Offer {
   id: string;
@@ -45,6 +63,8 @@ export interface Offer {
   createdAt?: string;
 }
 export interface PublicNeed {
+  revision?: number;
+  readiness?: ReadinessRating;
   id: string;
   ownerId: string;
   ownerName: string;
@@ -85,7 +105,8 @@ export interface Api {
   getRequest(id: string): Promise<NeedRequest>;
   createDraft(initialText: string, clientId: string): Promise<NeedRequest>;
   clarify(id: string, input: ClarificationInput): Promise<NeedRequest>;
-  updateDraft(id: string, card: NeedCard): Promise<NeedRequest>;
+  updateDraft(id: string, card: NeedCard, revision?: number): Promise<NeedRequest>;
+  confirmReadiness(id: string, revision: number, confirmedCriteria: ReadinessCriterion[]): Promise<NeedRequest>;
   publish(id: string): Promise<NeedRequest>;
   getOffers(id: string): Promise<Offer[]>;
   selectOffer(requestId: string, offerId: string): Promise<NeedRequest>;
@@ -96,5 +117,5 @@ export class ApiError extends Error {
   status: number;
   constructor(message: string, status = 400) { super(message); this.name = 'ApiError'; this.status = status; }
 }
-export const emptyCard = (): NeedCard => ({ title: '', description: '', outcome: '', category: '', budget: '', deadline: '', format: '', location: '', requirements: '' });
+export const emptyCard = (): NeedCard => ({ title: '', description: '', outcome: '', category: '', budget: '', deadline: '', format: '', location: '', requirements: '', materials: '', successCriteria: '', targetUsers: '', businessContact: '', consultationFormat: '', feedbackProcedure: '' });
 export const statusLabels: Record<RequestStatus, string> = { draft: 'Черновик', published: 'Опубликована', selected: 'Исполнитель выбран' };

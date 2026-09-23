@@ -9,4 +9,4 @@ import kz.needboard.needs.NeedStatus;
 public record NeedView(UUID id, UUID ownerId, String ownerName,
         @JsonInclude(JsonInclude.Include.NON_NULL) String originalDescription,
         NeedCardDraft card, NeedStatus status, Instant createdAt, Instant updatedAt,
-        UUID selectedProposalId, List<String> missingFields) {}
+        UUID selectedProposalId, List<String> missingFields, long revision, ReadinessRating readiness) {}

@@ -1,5 +1,6 @@
 import { ApiError, emptyCard } from './types';
 import type { Api, ChatMessage, NeedRequest, Offer, PublicNeed, User } from './types';
+import { calculateDemoReadiness, retainedConfirmations } from './readiness';
 
 const STORAGE_KEY = 'yasno-demo-v1';
 const SESSION_KEY = 'yasno-demo-session';
@@ -30,8 +31,8 @@ function welcome(offer: Offer): ChatMessage {
 function initialDatabase(): Database {
   const timestamp = now();
   const requests: NeedRequest[] = [
-    { id: 'demo-brand', ownerId: demoUser.id, status: 'published', initialText: 'Нужен фирменный стиль для кофейни', card: { title: 'Фирменный стиль для уютной кофейни', description: 'Открываем небольшую кофейню в Алматы. Нужен тёплый, узнаваемый визуальный стиль, который передаст атмосферу места.', outcome: 'Логотип, палитра, шрифты и макеты стаканчиков. Исходники и небольшое руководство по использованию.', category: 'Дизайн', budget: 'До 120 000 ₸', deadline: 'В течение двух недель', format: 'Удалённо', location: '', requirements: 'Предпочитаем природные оттенки и лаконичную типографику.' }, messages: [], clarificationStep: 7, readyForReview: true, createdAt: timestamp, updatedAt: timestamp, offerCount: 3 },
-    { id: 'demo-room', ownerId: demoUser.id, status: 'published', initialText: 'Хочу обновить гостиную', card: { title: 'Обновить гостиную без большого ремонта', description: 'Хочу сделать гостиную площадью 18 м² светлее и уютнее. Основную мебель планирую сохранить.', outcome: 'План расстановки, подбор освещения и текстиля, список покупок.', category: 'Дом и ремонт', budget: 'До 90 000 ₸', deadline: 'В течение месяца', format: 'Очно', location: 'Алматы', requirements: 'Без перепланировки и замены напольного покрытия.' }, messages: [], clarificationStep: 7, readyForReview: true, createdAt: timestamp, updatedAt: timestamp, offerCount: 2 },
+    { id: 'demo-brand', ownerId: demoUser.id, status: 'published', initialText: 'Нужен фирменный стиль для кофейни', card: { ...emptyCard(), title: 'Фирменный стиль для уютной кофейни', description: 'Открываем небольшую кофейню в Алматы. Нужен тёплый, узнаваемый визуальный стиль, который передаст атмосферу места.', outcome: 'Логотип, палитра, шрифты и макеты стаканчиков. Исходники и небольшое руководство по использованию.', category: 'Дизайн', budget: 'До 120 000 ₸', deadline: 'В течение двух недель', format: 'Удалённо', location: '', requirements: 'Предпочитаем природные оттенки и лаконичную типографику.' }, messages: [], clarificationStep: 7, readyForReview: true, createdAt: timestamp, updatedAt: timestamp, offerCount: 3 },
+    { id: 'demo-room', ownerId: demoUser.id, status: 'published', initialText: 'Хочу обновить гостиную', card: { ...emptyCard(), title: 'Обновить гостиную без большого ремонта', description: 'Хочу сделать гостиную площадью 18 м² светлее и уютнее. Основную мебель планирую сохранить.', outcome: 'План расстановки, подбор освещения и текстиля, список покупок.', category: 'Дом и ремонт', budget: 'До 90 000 ₸', deadline: 'В течение месяца', format: 'Очно', location: 'Алматы', requirements: 'Без перепланировки и замены напольного покрытия.' }, messages: [], clarificationStep: 7, readyForReview: true, createdAt: timestamp, updatedAt: timestamp, offerCount: 2 },
     { id: 'demo-english', ownerId: demoUser.id, status: 'draft', initialText: 'Хочу увереннее говорить на английском', card: { ...emptyCard(), title: 'Английский для путешествий', description: 'Хочу увереннее говорить на английском в путешествиях.' }, messages: [{ id: uuid(), role: 'user', text: 'Хочу увереннее говорить на английском в путешествиях.' }, { id: uuid(), role: 'assistant', text: 'Какой результат вы хотите получить? Опишите, что изменится, когда задача будет решена.' }], clarificationStep: 0, readyForReview: false, createdAt: timestamp, updatedAt: timestamp, offerCount: 0 },
   ];
   const offers = [...offersFor('demo-brand'), ...offersFor('demo-room').slice(0, 2)];
@@ -48,7 +49,7 @@ function seedCatalog(db: Database): Database {
     { id: 'catalog-balcony', card: { title: 'Зелёный уголок на небольшом балконе', description: 'Хочу обустроить балкон 4 м² растениями и местом для чтения. Балкон застеклён, выходит на восток.', outcome: 'План размещения, список неприхотливых растений, подбор мебели и кашпо.', category: 'Дом и ремонт', budget: 'До 65 000 ₸', deadline: 'В течение месяца', format: 'Любой', location: 'Алматы', requirements: 'Растения должны быть безопасны для кошки.' } },
   ];
   for (const { id, card } of cards) {
-    if (!db.requests.some(item => item.id === id)) db.requests.push({ id, ownerId: owner.id, status: 'published', card, initialText: card.description, messages: [], clarificationStep: 7, readyForReview: true, createdAt: now(), updatedAt: now(), offerCount: 0 });
+    if (!db.requests.some(item => item.id === id)) db.requests.push({ id, ownerId: owner.id, status: 'published', card: { ...emptyCard(), ...card }, initialText: card.description, messages: [], clarificationStep: 7, readyForReview: true, createdAt: now(), updatedAt: now(), offerCount: 0 });
   }
   db.catalogSeeded = true;
   save(db);
@@ -61,14 +62,22 @@ function save(db: Database) {
 function read(): Database {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seedCatalog(initialDatabase());
+    if (!raw) return normalize(seedCatalog(initialDatabase()));
     const parsed = JSON.parse(raw) as Database;
     if (parsed.version !== 1 || !Array.isArray(parsed.users) || !Array.isArray(parsed.requests) || !Array.isArray(parsed.offers) || !Array.isArray(parsed.messages) || !parsed.operations) throw new Error('Invalid storage');
-    return seedCatalog(parsed);
+    return normalize(seedCatalog(parsed));
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError('Демонстрационные данные недоступны. Откройте приложение в другом профиле браузера или очистите данные этого сайта.', 503);
   }
+}
+function normalize(db: Database): Database {
+  db.requests.forEach(request => {
+    request.card = { ...emptyCard(), ...request.card };
+    request.revision ??= 0;
+    request.readiness = calculateDemoReadiness(request.card, request.readiness?.criteria.filter(c => c.confirmed).map(c => c.criterion));
+  });
+  return db;
 }
 function currentUser(db: Database): User | null {
   return db.users.find(user => user.id === localStorage.getItem(SESSION_KEY)) ?? null;
@@ -97,7 +106,7 @@ function publishedRequest(db: Database, id: string): NeedRequest {
 }
 function publicNeed(db: Database, request: NeedRequest): PublicNeed {
   if (request.status === 'draft') throw new ApiError('Черновик доступен только автору.', 404);
-  return { id: request.id, ownerId: request.ownerId, ownerName: db.users.find(user => user.id === request.ownerId)?.name || 'Заказчик', status: request.status, card: request.card, createdAt: request.createdAt, updatedAt: request.updatedAt, offerCount: request.offerCount, selectedOfferId: request.selectedOfferId };
+  return { revision: request.revision, readiness: request.readiness, id: request.id, ownerId: request.ownerId, ownerName: db.users.find(user => user.id === request.ownerId)?.name || 'Заказчик', status: request.status, card: request.card, createdAt: request.createdAt, updatedAt: request.updatedAt, offerCount: request.offerCount, selectedOfferId: request.selectedOfferId };
 }
 function conversation(db: Database, requestId: string, offerId: string) {
   const user = requireUser(db);
@@ -171,7 +180,7 @@ export const mockApi: Api = {
   async getRequest(id) { await pause(); return ownedRequest(read(), id); },
   async listCatalog() {
     await pause(); const db = read(); const user = requireUser(db);
-    return db.requests.filter(item => item.status === 'published' && item.ownerId !== user.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(item => publicNeed(db, item));
+    return db.requests.filter(item => item.status === 'published' && item.ownerId !== user.id).sort((a, b) => (b.readiness?.catalogPriority ?? 0) - (a.readiness?.catalogPriority ?? 0) || b.createdAt.localeCompare(a.createdAt)).map(item => publicNeed(db, item));
   },
   async getCatalogRequest(id) {
     await pause(); const db = read(); const user = requireUser(db); const request = publishedRequest(db, id);
@@ -205,6 +214,7 @@ export const mockApi: Api = {
     if (initialText.trim().length < 10) throw new ApiError('Опишите потребность чуть подробнее — минимум 10 символов.');
     const text = initialText.trim();
     const request: NeedRequest = { id: uuid(), ownerId: user.id, status: 'draft', card: { ...emptyCard(), title: text.length > 76 ? `${text.slice(0, 73)}…` : text, description: text }, initialText: text, messages: [{ id: uuid(), role: 'user', text }, { id: uuid(), role: 'assistant', text: `Давайте превратим вашу идею в понятную задачу. ${questions[0]}` }], clarificationStep: 0, readyForReview: false, createdAt: now(), updatedAt: now(), offerCount: 0 };
+    request.revision = 0; request.readiness = calculateDemoReadiness(request.card);
     db.requests.push(request); db.operations[operation] = request.id; save(db); return request;
   },
   async clarify(id, { text, skip, clientId }) {
@@ -218,19 +228,35 @@ export const mockApi: Api = {
     request.clarificationStep += 1;
     request.readyForReview = request.clarificationStep >= questions.length;
     request.messages.push({ id: uuid(), role: 'assistant', text: request.readyForReview ? 'Карточка готова к проверке! Я собрал ваши ответы. Проверьте формулировки и добавьте недостающие детали перед публикацией.' : questions[request.clarificationStep] });
+    request.readiness = calculateDemoReadiness(request.card);
+    request.revision = (request.revision ?? 0) + 1;
     request.updatedAt = now(); db.operations[operation] = id; save(db); return request;
   },
-  async updateDraft(id, card) {
-    await pause(); const db = read(); const request = draft(db, id);
+  async updateDraft(id, card, revision) {
+    await pause(); const db = read(); const request = ownedRequest(db, id);
+    if (request.status === 'selected') throw new ApiError('После выбора решения карточка доступна только для чтения.', 409);
+    if (revision !== undefined && revision !== request.revision) throw new ApiError('Карточка изменилась. Обновите страницу.', 409);
     if (!request.readyForReview) throw new ApiError('Сначала завершите уточнения.', 409);
+    if (request.status === 'published' && (!card.title.trim() || !card.description.trim() || !card.outcome.trim())) throw new ApiError('Сохраните обязательные поля опубликованной карточки.');
+    const confirmations = retainedConfirmations(request.card, card, request.readiness);
     request.card = Object.fromEntries(Object.entries(card).map(([key, value]) => [key, value.trim()])) as typeof card;
+    request.readiness = calculateDemoReadiness(request.card, confirmations);
+    request.revision = (request.revision ?? 0) + 1;
     request.updatedAt = now(); save(db); return request;
+  },
+  async confirmReadiness(id, revision, confirmedCriteria) {
+    await pause(); const db = read(); const request = ownedRequest(db, id);
+    if (request.status === 'selected') throw new ApiError('После выбора решения карточка доступна только для чтения.', 409);
+    if (revision !== request.revision) throw new ApiError('Карточка изменилась. Обновите страницу и подтвердите актуальные сведения.', 409);
+    const rating = calculateDemoReadiness(request.card, confirmedCriteria);
+    if (confirmedCriteria.some(key => !rating.criteria.some(item => item.criterion === key && item.filled))) throw new ApiError('Сначала заполните все поля подтверждаемого показателя.');
+    request.readiness = rating; request.revision = revision + 1; request.updatedAt = now(); save(db); return request;
   },
   async publish(id) {
     await pause(); const db = read(); const request = ownedRequest(db, id);
     if (request.status !== 'draft') return request;
     if (!request.readyForReview || !request.card.title.trim() || !request.card.description.trim() || !request.card.outcome.trim()) throw new ApiError('Заполните название, описание и ожидаемый результат.');
-    request.status = 'published'; request.updatedAt = now();
+    request.status = 'published'; request.updatedAt = now(); request.revision = (request.revision ?? 0) + 1;
     const offers = offersFor(id); request.offerCount = offers.length;
     db.offers.push(...offers); db.messages.push(...offers.map(welcome)); save(db); return request;
   },
@@ -240,7 +266,7 @@ export const mockApi: Api = {
     if (!db.offers.some(offer => offer.id === offerId && offer.requestId === requestId)) throw new ApiError('Предложение не найдено.', 404);
     if (request.selectedOfferId === offerId) return request;
     if (request.status !== 'published') throw new ApiError('Для этой заявки уже выбран исполнитель.', 409);
-    request.selectedOfferId = offerId; request.status = 'selected'; request.updatedAt = now(); save(db); return request;
+    request.selectedOfferId = offerId; request.status = 'selected'; request.updatedAt = now(); request.revision = (request.revision ?? 0) + 1; save(db); return request;
   },
   async getMessages(requestId, offerId) { await pause(); const db = read(); conversation(db, requestId, offerId); return db.messages.filter(message => message.offerId === offerId); },
   async sendMessage(requestId, offerId, text, clientId) {

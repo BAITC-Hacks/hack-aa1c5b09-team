@@ -32,6 +32,11 @@ public class NeedController {
     @PostMapping("/api/needs/{id}/publish")
     public NeedView publish(@PathVariable UUID id) { return needs.publish(id, user.id()); }
 
+    @PutMapping("/api/needs/{id}/readiness-confirmations")
+    public NeedView confirmReadiness(@PathVariable UUID id, @Valid @RequestBody ReadinessConfirmationRequest request) {
+        return needs.confirmReadiness(id, user.id(), request);
+    }
+
     @GetMapping("/api/needs")
     public PageResponse<NeedView> catalog(@RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "20") int size) {

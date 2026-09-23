@@ -5,9 +5,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import kz.needboard.needs.api.NeedCardDraft;
+import kz.needboard.needs.api.ReadinessCriterion;
+import kz.needboard.needs.api.ReadinessRating;
 
 @Entity
 @Table(name = "needs")
@@ -33,6 +37,17 @@ public class Need {
     @Column(length = 250) private String workFormat;
     @Column(length = 250) private String location;
     @Column(columnDefinition = "text") private String requirements;
+    @Column(columnDefinition = "text") private String materials;
+    @Column(columnDefinition = "text") private String targetUsers;
+    @Column(length = 500) private String businessContact;
+    @Column(columnDefinition = "text") private String consultationFormat;
+    @Column(columnDefinition = "text") private String feedbackProcedure;
+    @ElementCollection
+    @CollectionTable(name = "need_readiness_confirmations", joinColumns = @JoinColumn(name = "need_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "criterion", nullable = false, length = 30)
+    private Set<ReadinessCriterion> confirmations = EnumSet.noneOf(ReadinessCriterion.class);
+    @Column(nullable = false) private int readinessScore;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30) private NeedStatus status;
     @Column(nullable = false) private Instant createdAt;
@@ -52,6 +67,8 @@ public class Need {
     }
 
     void update(String originalDescription, NeedCardDraft card) {
+        var previous = card();
+        confirmations.removeIf(criterion -> !criterion.content(previous).equals(criterion.content(card)));
         this.originalDescription = originalDescription;
         title = card.title();
         problem = card.problem();
@@ -69,13 +86,30 @@ public class Need {
         location = card.location();
         requirements = card.requirements();
         updatedAt = Instant.now();
+        materials = card.materials();
+        targetUsers = card.targetUsers();
+        businessContact = card.businessContact();
+        consultationFormat = card.consultationFormat();
+        feedbackProcedure = card.feedbackProcedure();
+        readinessScore = readiness().score();
     }
 
     NeedCardDraft card() {
         return new NeedCardDraft(title, problem, expectedResult, acceptanceCriteria,
                 constraints, budgetAmount, currency, deadline, category, budgetText, deadlineText,
-                workFormat, location, requirements);
+                workFormat, location, requirements, materials, targetUsers,
+                businessContact, consultationFormat, feedbackProcedure);
     }
+
+    void confirm(Set<ReadinessCriterion> criteria) {
+        confirmations.clear();
+        confirmations.addAll(criteria);
+        readinessScore = readiness().score();
+        updatedAt = Instant.now();
+    }
+
+    ReadinessRating readiness() { return ReadinessRating.calculate(card(), confirmations); }
+    long revision() { return version; }
 
     void publish() { status = NeedStatus.PUBLISHED; updatedAt = Instant.now(); }
     void select(UUID proposalId) {

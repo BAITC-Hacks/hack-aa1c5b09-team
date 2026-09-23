@@ -31,15 +31,37 @@ public class NeedService {
     @Transactional
     public NeedView create(UUID actor, NeedWriteRequest request) {
         rules.validateBudget(request.card());
-        return view(needs.save(new Need(actor, request.originalDescription(), request.card())), actor);
+        return view(needs.saveAndFlush(new Need(actor, request.originalDescription(), request.card())), actor);
     }
 
     @Transactional
     public NeedView update(UUID id, UUID actor, NeedWriteRequest request) {
         var need = ownedLocked(id, actor);
-        requireStatus(need, NeedStatus.DRAFT);
+        requireEditable(need);
+        if (need.status() == NeedStatus.PUBLISHED && request.revision() == null) {
+            throw ApiException.validation(Map.of("revision", "Передайте версию опубликованной карточки."));
+        }
+        if (request.revision() != null) requireRevision(need, request.revision());
         rules.validateBudget(request.card());
+        if (need.status() == NeedStatus.PUBLISHED && !rules.missingFields(request.card()).isEmpty()) {
+            throw ApiException.validation(Map.of("card", "Сохраните обязательные поля опубликованной карточки."));
+        }
         need.update(request.originalDescription(), request.card());
+        needs.flush();
+        return view(need, actor);
+    }
+
+    @Transactional
+    public NeedView confirmReadiness(UUID id, UUID actor, ReadinessConfirmationRequest request) {
+        var need = ownedLocked(id, actor);
+        requireEditable(need);
+        requireRevision(need, request.revision());
+        Map<String, String> missing = new LinkedHashMap<>();
+        request.confirmedCriteria().stream().filter(criterion -> !criterion.filled(need.card()))
+                .forEach(criterion -> missing.put("confirmedCriteria." + criterion.name(), criterion.description));
+        if (!missing.isEmpty()) throw ApiException.validation(missing);
+        need.confirm(request.confirmedCriteria());
+        needs.flush();
         return view(need, actor);
     }
 
@@ -54,6 +76,7 @@ public class NeedService {
         }
         if (!missing.isEmpty()) throw ApiException.validation(missing);
         need.publish();
+        needs.flush();
         return view(need, actor);
     }
 
@@ -64,7 +87,8 @@ public class NeedService {
     }
 
     public PageResponse<NeedView> catalog(int page, int size) {
-        return PageResponse.from(needs.findByStatus(NeedStatus.PUBLISHED, paging(page, size)).map(n -> view(n, null)));
+        paging(page, size); // Validate pagination; catalog ordering is applied before pagination in the database.
+        return PageResponse.from(needs.catalog(PageRequest.of(page, size)).map(n -> view(n, null)));
     }
 
     public PageResponse<NeedView> mine(UUID actor, int page, int size) {
@@ -103,11 +127,23 @@ public class NeedService {
         }
     }
 
+    private void requireEditable(Need need) {
+        if (need.status() == NeedStatus.SOLUTION_SELECTED) {
+            throw ApiException.conflict("INVALID_NEED_STATUS", "После выбора решения карточка доступна только для чтения.");
+        }
+    }
+
+    private void requireRevision(Need need, long revision) {
+        if (need.revision() != revision) {
+            throw ApiException.conflict("STALE_NEED", "Карточка изменилась. Обновите её и подтвердите актуальные сведения.");
+        }
+    }
+
     private NeedView view(Need need, UUID actor) {
         var card = need.card();
         return new NeedView(need.id(), need.ownerId(), users.displayName(need.ownerId()),
                 need.ownerId().equals(actor) ? need.originalDescription() : null,
-                card, need.status(), need.createdAt(), need.updatedAt(), need.selectedProposalId(), rules.missingFields(card));
+                card, need.status(), need.createdAt(), need.updatedAt(), need.selectedProposalId(), rules.missingFields(card), need.revision(), need.readiness());
     }
 
     public NeedChatAccess chatAccess(UUID id) {

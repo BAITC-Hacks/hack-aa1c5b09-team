@@ -2,6 +2,8 @@ package kz.needboard;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -163,7 +165,8 @@ class BackendIntegrationTests {
         mvc.perform(get("/api/needs/" + id).session(owner.session())).andExpect(status().isOk())
                 .andExpect(jsonPath("$.originalDescription").value("private original"));
         mvc.perform(put("/api/needs/" + id).session(owner.session()).with(csrf())
-                .contentType("application/json").content(needPayload())).andExpect(status().isConflict());
+                .contentType("application/json").content(needPayload())).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.revision").exists());
     }
 
     @Test
@@ -325,6 +328,150 @@ class BackendIntegrationTests {
         mvc.perform(post("/api/needs").session(owner.session()).with(csrf())
                 .contentType("application/json").content("{\"card\":{\"budgetAmount\":100}}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors['card.currency']").exists());
+    }
+
+    @Test
+    void readinessRequiresExplicitConfirmationAndIsPersisted() throws Exception {
+        var owner = account("owner");
+        var created = createReadinessDraft(owner, completeCard());
+        String id = created.path("id").asText();
+        assertThat(created.path("readiness").path("score").asInt()).isZero();
+        assertThat(created.path("readiness").path("criteria").size()).isEqualTo(7);
+        var confirmed = body(mvc.perform(confirmRequest(id, owner, created.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(100))
+                .andExpect(jsonPath("$.readiness.level").value("PRIORITY")).andReturn());
+        mvc.perform(get("/api/needs/" + id).session(owner.session()))
+                .andExpect(jsonPath("$.readiness.score").value(100));
+        assertThat(jdbc.queryForObject("select readiness_score from needs where id = ?", Integer.class, UUID.fromString(id)))
+                .isEqualTo(100);
+        mvc.perform(confirmRequest(id, owner, confirmed.path("revision").asLong(), List.of()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(0));
+    }
+
+    @Test
+    void editingConfirmedContentResetsOnlyItsPointsAndStaleConfirmationIsRejected() throws Exception {
+        var owner = account("owner");
+        var created = createReadinessDraft(owner, completeCard());
+        String id = created.path("id").asText();
+        var confirmed = body(mvc.perform(confirmRequest(id, owner, created.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isOk()).andReturn());
+        var changed = completeCard();
+        changed.put("materials", "Updated examples: dataset-v2.csv");
+        var updated = body(mvc.perform(put("/api/needs/" + id).session(owner.session()).with(csrf())
+                .contentType("application/json").content(json.writeValueAsString(Map.of("card", changed,
+                        "revision", confirmed.path("revision").asLong()))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(80))
+                .andExpect(jsonPath("$.readiness.level").value("READY")).andReturn());
+        mvc.perform(confirmRequest(id, owner, confirmed.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_NEED"));
+        var reconfirmed = body(mvc.perform(confirmRequest(id, owner, updated.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(100)).andReturn());
+        changed.put("materials", "  ");
+        mvc.perform(put("/api/needs/" + id).session(owner.session()).with(csrf()).contentType("application/json")
+                .content(json.writeValueAsString(Map.of("card", changed, "revision", reconfirmed.path("revision").asLong()))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(80))
+                .andExpect(jsonPath("$.readiness.criteria[1].filled").value(false));
+    }
+
+    @Test
+    void confirmationRequiresOwnerCsrfCurrentRevisionAndAllFieldsOfCriterion() throws Exception {
+        var owner = account("owner");
+        var outsider = account("outsider");
+        var card = completeCard();
+        card.put("feedbackProcedure", "  ");
+        var created = createReadinessDraft(owner, card);
+        String id = created.path("id").asText();
+        long revision = created.path("revision").asLong();
+        mvc.perform(confirmRequest(id, outsider, revision, List.of("CONTEXT"))).andExpect(status().isForbidden());
+        mvc.perform(put("/api/needs/" + id + "/readiness-confirmations").with(csrf())
+                .contentType("application/json").content("{\"revision\":0,\"confirmedCriteria\":[]}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/needs/" + id + "/readiness-confirmations").session(owner.session())
+                .contentType("application/json").content("{\"revision\":0,\"confirmedCriteria\":[]}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(confirmRequest(id, owner, revision, List.of("CONTEXT", "BUSINESS")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors['confirmedCriteria.BUSINESS']").exists());
+        mvc.perform(get("/api/needs/" + id).session(owner.session())).andExpect(jsonPath("$.readiness.score").value(0));
+        mvc.perform(confirmRequest(id, owner, revision, List.of("NOT_A_CRITERION"))).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/needs").session(owner.session()).with(csrf()).contentType("application/json")
+                .content("{\"card\":{},\"readinessScore\":100}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void lowReadinessDoesNotHidePublishedTaskOrBlockProposalsAndOwnerCanImproveIt() throws Exception {
+        var owner = account("owner");
+        UUID id = createPublished(owner);
+        var published = body(mvc.perform(get("/api/needs/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.readiness.score").value(0))
+                .andExpect(jsonPath("$.readiness.level").value("NEEDS_CLARIFICATION")).andReturn());
+        mvc.perform(get("/api/needs")).andExpect(jsonPath("$.items[0].id").value(id.toString()));
+        UUID proposal = createProposal(id, account("author"));
+        var updated = body(mvc.perform(put("/api/needs/" + id).session(owner.session()).with(csrf())
+                .contentType("application/json").content(json.writeValueAsString(Map.of("card", completeCard(),
+                        "revision", published.path("revision").asLong()))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PUBLISHED")).andReturn());
+        mvc.perform(confirmRequest(id.toString(), owner, published.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isConflict());
+        var confirmed = body(mvc.perform(confirmRequest(id.toString(), owner, updated.path("revision").asLong(), allCriteria()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.readiness.score").value(100)).andReturn());
+        mvc.perform(post("/api/proposals/" + proposal + "/accept").session(owner.session()).with(csrf()))
+                .andExpect(status().isOk());
+        mvc.perform(confirmRequest(id.toString(), owner, confirmed.path("revision").asLong(), List.of()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void catalogPromotesReadyTasksBeforePaginationButKeepsLowRatedOnes() throws Exception {
+        var owner = account("owner");
+        var priorities = List.of(
+                List.of("CONTEXT", "MATERIALS", "RESULT", "SUCCESS", "USERS", "BUSINESS"),
+                List.of("CONTEXT", "MATERIALS", "RESULT", "SUCCESS"), List.<String>of());
+        var ids = new ArrayList<String>();
+        for (var criteria : priorities) {
+            var created = createReadinessDraft(owner, completeCard());
+            String id = created.path("id").asText();
+            ids.add(id);
+            mvc.perform(confirmRequest(id, owner, created.path("revision").asLong(), criteria)).andExpect(status().isOk());
+            publish(UUID.fromString(id), owner);
+        }
+        for (int page = 0; page < 3; page++) {
+            mvc.perform(get("/api/needs?page=" + page + "&size=1"))
+                    .andExpect(jsonPath("$.totalElements").value(3))
+                    .andExpect(jsonPath("$.items[0].id").value(ids.get(page)));
+        }
+        var high = body(mvc.perform(get("/api/needs/" + ids.getFirst())).andReturn());
+        mvc.perform(confirmRequest(ids.getFirst(), owner, high.path("revision").asLong(), List.of())).andExpect(status().isOk());
+        mvc.perform(get("/api/needs?size=1")).andExpect(jsonPath("$.items[0].id").value(ids.get(1)));
+    }
+
+    private Map<String, Object> completeCard() {
+        var card = new LinkedHashMap<String, Object>();
+        card.put("title", "Booking website");
+        card.put("problem", "Appointments are lost in messages; move bookings online");
+        card.put("materials", "Anonymized appointment examples and existing service list");
+        card.put("expectedResult", "Clients can book available appointments on the website");
+        card.put("acceptanceCriteria", List.of("Two users cannot book the same time", "Confirmation is shown after booking"));
+        card.put("constraints", "Java; do not transfer customer personal data");
+        card.put("targetUsers", "Salon customers and receptionists");
+        card.put("businessContact", "owner@example.test");
+        card.put("consultationFormat", "Weekly video meeting");
+        card.put("feedbackProcedure", "Owner reviews each demo within two business days");
+        return card;
+    }
+
+    private List<String> allCriteria() {
+        return List.of("CONTEXT", "MATERIALS", "RESULT", "SUCCESS", "CONSTRAINTS", "USERS", "BUSINESS");
+    }
+
+    private JsonNode createReadinessDraft(Account owner, Map<String, Object> card) throws Exception {
+        return body(mvc.perform(post("/api/needs").session(owner.session()).with(csrf()).contentType("application/json")
+                .content(json.writeValueAsString(Map.of("card", card)))).andExpect(status().isCreated()).andReturn());
+    }
+
+    private MockHttpServletRequestBuilder confirmRequest(String id, Account owner, long revision, List<String> criteria) throws Exception {
+        return put("/api/needs/" + id + "/readiness-confirmations").session(owner.session()).with(csrf())
+                .contentType("application/json").content(json.writeValueAsString(Map.of("revision", revision, "confirmedCriteria", criteria)));
     }
 
     private int acceptAtOnce(UUID proposal, UUID owner, CountDownLatch ready, CountDownLatch start) throws Exception {

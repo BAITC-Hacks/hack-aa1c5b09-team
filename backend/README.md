@@ -72,6 +72,7 @@ $env:DB_PASSWORD = 'тот же пароль, что в .env'
 **Контракты и границы работы команды:**
 
 - [API и примеры JSON](docs/api/README.md) — для фронтендера и разработчика ИИ.
+- [Рейтинг готовности: подтверждения, версии и каталог](docs/api/READINESS.md).
 - [Общий план задач](TEAM_TASKS.md).
 - kz.needboard.identity — авторизация и CurrentUser для получения пользователя на сервере.
 - kz.needboard.needs — карточки; needs.api.NeedCardDraft и NeedCardRules доступны ИИ-модулю.

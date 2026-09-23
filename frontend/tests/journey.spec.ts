@@ -120,10 +120,10 @@ test('пропуск вопросов не выдумывает данные, п
     await page.getByRole('button', { name: 'Пока не знаю, пропустить' }).click();
     if (i < 6) await expect(page.getByRole('button', { name: 'Пока не знаю, пропустить' })).toBeEnabled();
   }
-  await expect(page.getByLabel('Ожидаемый результат')).toHaveValue('');
+  await expect(page.getByRole('textbox', { name: 'Ожидаемый результат' })).toHaveValue('');
   await expect(page.getByLabel('Бюджет')).toHaveValue('');
   await expect(page.getByRole('button', { name: 'Опубликовать заявку' })).toBeDisabled();
-  await page.getByLabel('Ожидаемый результат').fill('Уверенно общаться в аэропорту и отеле');
+  await page.getByRole('textbox', { name: 'Ожидаемый результат' }).fill('Уверенно общаться в аэропорту и отеле');
   await expect(page.getByRole('button', { name: 'Опубликовать заявку' })).toBeEnabled();
 });
 
@@ -148,5 +148,55 @@ test('личный и публичный профиль: сохранение и
   await page.goto('/requests/demo-brand');
   await page.getByRole('article').filter({ hasText: 'Анна Смирнова' }).getByRole('link', { name: 'Профиль исполнителя', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Анна Смирнова' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('рейтинг: подтверждение, сохранение, публикация и пересчёт после дополнения', async ({ page }, testInfo) => {
+  await demo(page);
+  await page.goto('/requests/demo-english/edit');
+  for (let i = 0; i < 7; i++) {
+    await page.getByRole('button', { name: 'Пока не знаю, пропустить' }).click();
+    if (i < 6) await expect(page.getByRole('button', { name: 'Пока не знаю, пропустить' })).toBeEnabled();
+  }
+  const panel = page.getByRole('region', { name: 'Рейтинг готовности задачи' });
+  await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '0');
+  const input: Record<string, string> = {
+    'Ожидаемый результат': 'Уверенно общаться в аэропорту и отеле',
+    'Данные и материалы': 'Запись пробного разговора, результаты теста уровня',
+    'Критерии успеха': 'Диалог в отеле длится 10 минут без перехода на русский',
+    'Сроки': 'Два месяца',
+    'Пользователи решения': 'Взрослые путешественники с уровнем A2',
+    'Контакт со стороны бизнеса': 'contact@example.test',
+    'Формат консультаций': 'Видеовстреча по четвергам',
+    'Порядок обратной связи': 'Разбор записей в течение двух дней',
+  };
+  for (const [label, value] of Object.entries(input)) await page.getByRole('textbox', { name: label }).fill(value);
+  await expect(panel.getByRole('checkbox').first()).toBeDisabled();
+  await page.getByRole('button', { name: 'Сохранить черновик' }).click();
+  await expect(page.getByText('Черновик сохранён')).toBeVisible();
+  await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '0');
+  const labels = ['Контекст и потребность', 'Данные и материалы', 'Ожидаемый результат', 'Критерии успеха', 'Ограничения', 'Пользователи', 'Связь с бизнесом'];
+  for (const label of labels) {
+    const checkbox = panel.getByRole('checkbox', { name: `Подтвердить: ${label}`, exact: true });
+    await checkbox.click();
+    await expect(checkbox).toBeChecked();
+    await expect(checkbox).toBeEnabled();
+  }
+  await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '100');
+  await page.reload();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('value', '100');
+  await page.getByRole('button', { name: 'Опубликовать заявку' }).click();
+  await expect(page.getByText('Ваша заявка опубликована!')).toBeVisible();
+  await expect(page.getByRole('article')).toHaveCount(3);
+  await expect(page.getByText('100/100 · Приоритетная')).toBeVisible();
+  await page.getByRole('link', { name: 'Дополнить задачу' }).click();
+  await page.getByRole('textbox', { name: 'Данные и материалы', exact: true }).fill('Новые записи и обновлённый тест уровня');
+  await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(page.getByText('Изменения сохранены')).toBeVisible();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('value', '80');
+  await expect(page.getByRole('checkbox', { name: 'Подтвердить: Данные и материалы', exact: true })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'Подтвердить: Данные и материалы', exact: true }).click();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('value', '100');
+  await page.screenshot({ path: testInfo.outputPath('readiness.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

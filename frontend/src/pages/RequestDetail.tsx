@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, BadgeCheck, Check, CheckCircle2, FileText, Messa
 import { api, isDemo } from '../api';
 import type { NeedRequest, Offer } from '../api/types';
 import { Avatar, Button, EmptyState, ErrorNotice, formatDate, Loading, Modal, Status } from '../components/ui';
+import { ReadinessPanel } from '../components/Readiness';
 import { NeedPreview } from '../components/NeedPreview';
 import { ChatPanel } from '../components/ChatPanel';
 import { OfferSummary } from '../components/OfferSummary';
@@ -32,6 +33,7 @@ function DetailContent({ request }: { request: NeedRequest }) {
     <Link to="/" className={s.backLink}><ArrowLeft size={16} />Мои потребности</Link>
     {notice && <div className={s.successBanner} role="status"><CheckCircle2 size={21} /><div><strong>Ваша заявка опубликована!</strong><span>{isDemo ? 'Потребность доступна в каталоге. Здесь могут быть и демонстрационные отклики, и предложения пользователей.' : 'Теперь исполнители смогут предложить свои решения.'}</span></div><button onClick={() => setNoticeDismissed(true)} aria-label="Скрыть уведомление">×</button></div>}
     <div className={s.detailHeading}><div><div className={s.detailMeta}><Status status={request.status} /><span>Создана {formatDate(request.createdAt)}</span></div><h1>{request.card.title}</h1><p>Обсудите детали и выберите решение, которое подходит именно вам.</p></div></div>
+    <ReadinessPanel request={request} editable />{request.status === 'published' && <Link to={`/requests/${request.id}/edit`} className={`${s.button} ${s.secondary}`}>Дополнить задачу</Link>}
     <details className={s.requestDetails}><summary><span><FileText size={19} />Карточка потребности</span><span>Посмотреть детали<ArrowRight size={16} /></span></summary><NeedPreview card={request.card} /></details>
     {request.status === 'selected' && <div className={s.selectionBanner}><BadgeCheck size={23} /><div><strong>Исполнитель выбран. Следующий шаг — за вами.</strong><p>Продолжайте обсуждение в чате с выбранным исполнителем. Остальные переписки сохранены для чтения.</p></div></div>}
     <div className={s.sectionHeading}><div><h2>Предложения <span>{offers.data?.length ?? request.offerCount}</span></h2><p>{request.status === 'selected' ? 'Вы нашли своё решение.' : 'Разные подходы к одной задаче. Выбор за вами.'}</p></div>{isDemo && offers.data?.some(offer => !offer.providerId) && <span className={s.smallDemo}><Sparkles size={13} />Есть демонстрационные отклики</span>}</div>

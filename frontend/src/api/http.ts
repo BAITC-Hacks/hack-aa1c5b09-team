@@ -1,5 +1,5 @@
 import { ApiError, emptyCard } from './types';
-import type { AiMessage, Api, ChatMessage, NeedCard, NeedRequest, Offer, ProviderProfile, PublicNeed, User } from './types';
+import type { AiMessage, Api, ChatMessage, NeedCard, NeedRequest, Offer, ProviderProfile, PublicNeed, ReadinessRating, User } from './types';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 
@@ -7,6 +7,11 @@ type ServerUser = { id: string; email: string; displayName: string; specialty?: 
 type ServerProvider = Omit<ServerUser, 'email'>;
 type Page<T> = { items: T[] };
 type ServerCard = {
+  materials?: string | null;
+  targetUsers?: string | null;
+  businessContact?: string | null;
+  consultationFormat?: string | null;
+  feedbackProcedure?: string | null;
   title: string | null;
   problem: string | null;
   expectedResult: string | null;
@@ -23,6 +28,8 @@ type ServerCard = {
   requirements?: string | null;
 };
 type ServerNeed = {
+  revision: number;
+  readiness?: ReadinessRating;
   id: string;
   ownerId: string;
   ownerName?: string | null;
@@ -51,7 +58,7 @@ type ServerProposal = {
   createdAt: string;
 };
 type Csrf = { headerName: string; token: string };
-type ClarificationState = { card: NeedCard; messages: AiMessage[]; step: number; ready: boolean };
+type ClarificationState = { revision?: number; unsaved?: boolean; card: NeedCard; messages: AiMessage[]; step: number; ready: boolean };
 
 const questions = [
   'Какой результат вы хотите получить? Опишите, что изменится, когда задача будет решена.',
@@ -83,6 +90,12 @@ function money(value: number | null, currency: string | null) {
 }
 function card(value: ServerCard): NeedCard {
   return {
+    materials: text(value.materials),
+    successCriteria: (value.acceptanceCriteria || []).join("\n"),
+    targetUsers: text(value.targetUsers),
+    businessContact: text(value.businessContact),
+    consultationFormat: text(value.consultationFormat),
+    feedbackProcedure: text(value.feedbackProcedure),
     title: text(value.title),
     description: text(value.problem),
     outcome: text(value.expectedResult),
@@ -97,10 +110,15 @@ function card(value: ServerCard): NeedCard {
 function serverCard(value: NeedCard): ServerCard {
   const clean = Object.fromEntries(Object.entries(value).map(([key, item]) => [key, item.trim()])) as unknown as NeedCard;
   return {
+    materials: clean.materials || null,
+    targetUsers: clean.targetUsers || null,
+    businessContact: clean.businessContact || null,
+    consultationFormat: clean.consultationFormat || null,
+    feedbackProcedure: clean.feedbackProcedure || null,
     title: clean.title || null,
     problem: clean.description || null,
     expectedResult: clean.outcome || null,
-    acceptanceCriteria: clean.outcome ? [clean.outcome] : [],
+    acceptanceCriteria: clean.successCriteria.split(/\r?\n/).map(line => line.trim()).filter(Boolean),
     constraints: clean.requirements || null,
     budgetAmount: null,
     currency: null,
@@ -121,6 +139,8 @@ function initialState(need: ServerNeed): ClarificationState {
   const complete = Boolean(need.card.expectedResult && need.card.acceptanceCriteria?.length);
   return {
     card: card(need.card),
+    revision: need.revision,
+    unsaved: false,
     step: complete ? questions.length : 0,
     ready: complete,
     messages: complete ? [{ id: uuid(), role: 'assistant', text: 'Карточка готова к проверке. Проверьте формулировки перед публикацией.' }] : [
@@ -131,15 +151,21 @@ function initialState(need: ServerNeed): ClarificationState {
 }
 function requestNeed(need: ServerNeed): NeedRequest {
   const draftState = need.status === 'DRAFT' ? readState(need.id) || initialState(need) : null;
+  const serverValue = card(need.card);
+  const localValue = draftState ? { ...emptyCard(), ...draftState.card } : serverValue;
+  const hasUnsavedCard = !!draftState && draftState.unsaved !== false && Object.keys(serverValue).some(key => localValue[key as keyof NeedCard] !== serverValue[key as keyof NeedCard]);
   return {
     id: need.id,
     ownerId: need.ownerId,
     status: status(need.status),
-    card: draftState?.card || card(need.card),
+    card: hasUnsavedCard ? localValue : serverValue,
+    hasUnsavedCard,
+    revision: hasUnsavedCard ? draftState?.revision ?? need.revision : need.revision,
+    readiness: need.readiness,
     initialText: need.originalDescription || need.card.problem || '',
     messages: draftState?.messages || [],
     clarificationStep: draftState?.step || 0,
-    readyForReview: draftState?.ready || false,
+    readyForReview: need.status !== 'DRAFT' || (draftState?.ready ?? false),
     createdAt: need.createdAt,
     updatedAt: need.updatedAt || need.createdAt,
     offerCount: 0,
@@ -147,7 +173,7 @@ function requestNeed(need: ServerNeed): NeedRequest {
   };
 }
 function publicNeed(need: ServerNeed): PublicNeed {
-  return { id: need.id, ownerId: need.ownerId, ownerName: need.ownerName || 'Заказчик', status: status(need.status) as PublicNeed['status'], card: card(need.card), createdAt: need.createdAt, updatedAt: need.updatedAt || need.createdAt, offerCount: 0, selectedOfferId: need.selectedProposalId || undefined };
+  return { revision: need.revision, readiness: need.readiness, id: need.id, ownerId: need.ownerId, ownerName: need.ownerName || 'Заказчик', status: status(need.status) as PublicNeed['status'], card: card(need.card), createdAt: need.createdAt, updatedAt: need.updatedAt || need.createdAt, offerCount: 0, selectedOfferId: need.selectedProposalId || undefined };
 }
 function offer(value: ServerProposal): Offer {
   const price = value.priceNote || money(value.priceAmount, value.currency) || 'Стоимость обсуждается';
@@ -227,6 +253,9 @@ export const httpApi: Api = {
     const state = readState(id) || initialState(need);
     if (state.ready) throw new ApiError('Уточнения завершены. Перейдите к проверке карточки.', 409);
     if (!input.skip && !input.text.trim()) throw new ApiError('Введите ответ или пропустите вопрос.');
+    state.card = { ...emptyCard(), ...state.card };
+    state.revision ??= need.revision;
+    state.unsaved = true;
     if (!input.skip) state.card[questionFields[state.step]] = input.text.trim();
     state.messages.push({ id: uuid(), role: 'user', text: input.skip ? 'Пока не знаю, пропустить' : input.text.trim() });
     state.step += 1;
@@ -235,11 +264,14 @@ export const httpApi: Api = {
     writeState(id, state);
     return requestNeed(need);
   },
-  async updateDraft(id, value) {
+  async updateDraft(id, value, revision) {
     const current = await fetchJson<ServerNeed>(`/needs/${encodeURIComponent(id)}`);
-    const result = await fetchJson<ServerNeed>(`/needs/${encodeURIComponent(id)}`, { method: 'PUT', ...body({ originalDescription: current.originalDescription || value.description, card: serverCard(value) }) });
-    const state = readState(id) || initialState(result); state.card = value; state.ready = true; state.step = questions.length; writeState(id, state);
+    const result = await fetchJson<ServerNeed>(`/needs/${encodeURIComponent(id)}`, { method: 'PUT', ...body({ revision: revision ?? current.revision, originalDescription: current.originalDescription || value.description, card: serverCard(value) }) });
+    const state = readState(id) || initialState(result); state.card = card(result.card); state.revision = result.revision; state.unsaved = false; state.ready = true; state.step = questions.length; writeState(id, state);
     return requestNeed(result);
+  },
+  async confirmReadiness(id, revision, confirmedCriteria) {
+    return requestNeed(await fetchJson<ServerNeed>(`/needs/${encodeURIComponent(id)}/readiness-confirmations`, { method: "PUT", ...body({ revision, confirmedCriteria }) }));
   },
   async publish(id) { const result = await post<ServerNeed>(`/needs/${encodeURIComponent(id)}/publish`); try { localStorage.removeItem(stateKey(id)); } catch { /* no-op */ } return requestNeed(result); },
   async getOffers(id) { const page = await fetchJson<Page<ServerProposal>>(`/needs/${encodeURIComponent(id)}/proposals?size=100`); return page.items.map(offer); },

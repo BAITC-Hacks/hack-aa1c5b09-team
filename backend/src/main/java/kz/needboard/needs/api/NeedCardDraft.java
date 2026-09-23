@@ -21,7 +21,12 @@ public record NeedCardDraft(
         @Size(max = 250) String deadlineText,
         @Size(max = 250) String workFormat,
         @Size(max = 250) String location,
-        @Size(max = 5000) String requirements) {
+        @Size(max = 5000) String requirements,
+        @Size(max = 5000) String materials,
+        @Size(max = 2000) String targetUsers,
+        @Size(max = 500) String businessContact,
+        @Size(max = 2000) String consultationFormat,
+        @Size(max = 2000) String feedbackProcedure) {
     public NeedCardDraft {
         title = strip(title);
         problem = strip(problem);
@@ -33,6 +38,11 @@ public record NeedCardDraft(
         workFormat = strip(workFormat);
         location = strip(location);
         requirements = strip(requirements);
+        materials = strip(materials);
+        targetUsers = strip(targetUsers);
+        businessContact = strip(businessContact);
+        consultationFormat = strip(consultationFormat);
+        feedbackProcedure = strip(feedbackProcedure);
         acceptanceCriteria = acceptanceCriteria == null ? List.of() :
                 acceptanceCriteria.stream().map(NeedCardDraft::strip).toList();
         currency = currency == null || currency.isBlank() ? null : currency.strip().toUpperCase(Locale.ROOT);
@@ -41,7 +51,7 @@ public record NeedCardDraft(
     public NeedCardDraft(String title, String problem, String expectedResult, List<String> acceptanceCriteria,
             String constraints, BigDecimal budgetAmount, String currency, LocalDate deadline) {
         this(title, problem, expectedResult, acceptanceCriteria, constraints, budgetAmount, currency, deadline,
-                null, null, null, null, null, constraints);
+                null, null, null, null, null, constraints, null, null, null, null, null);
     }
 
     private static String strip(String value) { return value == null ? null : value.strip(); }

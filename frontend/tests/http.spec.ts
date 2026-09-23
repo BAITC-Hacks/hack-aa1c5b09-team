@@ -87,9 +87,10 @@ test('HTTP-регистрация входит в сессию и публику
     if (index < answers.length - 1) await expect(browser.getByLabel('Ответ помощнику')).toHaveValue('');
   }
   await browser.getByLabel('Название задачи').fill('Сайт кофейни');
+  await browser.getByLabel('Критерии успеха').fill('Меню и контакты доступны на телефоне');
   await browser.getByRole('button', { name: 'Опубликовать заявку' }).click();
   await expect(browser.getByText('Ваша задача ждёт своего человека')).toBeVisible();
-  expect(updateBody?.card).toMatchObject({ title: 'Сайт кофейни', expectedResult: 'Готовый сайт с меню', category: 'Разработка', budgetText: '100 000 ₸', workFormat: 'Удалённо', location: 'Алматы', requirements: 'Адаптация под телефон', acceptanceCriteria: ['Готовый сайт с меню'] });
+  expect(updateBody?.card).toMatchObject({ title: 'Сайт кофейни', expectedResult: 'Готовый сайт с меню', category: 'Разработка', budgetText: '100 000 ₸', workFormat: 'Удалённо', location: 'Алматы', requirements: 'Адаптация под телефон', acceptanceCriteria: ['Меню и контакты доступны на телефоне'] });
 });
 
 test('HTTP-профиль сохраняется с CSRF и публично открывается без сессии', async ({ page: browser }) => {
