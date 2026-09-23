@@ -1,0 +1,31 @@
+@import '@fontsource/manrope/cyrillic-400.css';
+@import '@fontsource/manrope/cyrillic-500.css';
+@import '@fontsource/manrope/cyrillic-600.css';
+@import '@fontsource/manrope/cyrillic-700.css';
+@import '@fontsource/manrope/cyrillic-800.css';
+@import '@fontsource/manrope/latin-400.css';
+@import '@fontsource/manrope/latin-500.css';
+@import '@fontsource/manrope/latin-600.css';
+@import '@fontsource/manrope/latin-700.css';
+@import '@fontsource/manrope/latin-800.css';
+
+:root { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #272735; background: #f8f9fc; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; --accent: #6955db; --accent-dark: #5742c5; --muted: #858593; --border: #eaeaf1; --radius: 14px; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, textarea, select { font: inherit; }
+button, a, input, textarea, summary { -webkit-tap-highlight-color: transparent; }
+button, summary { cursor: pointer; }
+button { color: inherit; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+a { color: inherit; text-decoration: none; }
+input, textarea { width: 100%; border: 1px solid #dfe0e9; border-radius: 9px; padding: 12px 14px; outline: none; background: white; font-size: 13px; line-height: 1.65; color: #30303f; transition: border-color .15s, box-shadow .15s; }
+input::placeholder, textarea::placeholder { color: #9999a7; }
+input:focus, textarea:focus { border-color: #9582e8; box-shadow: 0 0 0 3px #6955db12; }
+textarea { resize: vertical; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid #a89be9; outline-offset: 4px; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-weight: 750; }
+::selection { background: #e3dcff; }
+.skip-link { position: fixed; top: -80px; left: 20px; z-index: 100; padding: 12px; background: white; border: 1px solid var(--accent); border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
