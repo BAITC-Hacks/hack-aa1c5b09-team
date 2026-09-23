@@ -82,6 +82,13 @@ test('демо, поиск, фильтры, навигация и сохране
   await expect(page.getByRole('heading', { name: 'Рады вас видеть' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true });
   await demo(page);
+  await expect(page.getByRole('heading', { name: 'Большие решения начинаются с пары слов.' })).toBeVisible();
+  await expect(page.getByPlaceholder('Например: ищу дизайнера для моей кофейни')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Создать задачу', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Уточнить с ИИ', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Получить предложения', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Уточнить с ИИ', exact: true }).click();
+  await expect(page.getByPlaceholder('Например: ищу дизайнера для моей кофейни')).toBeFocused();
   await page.screenshot({ path: testInfo.outputPath('dashboard.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('tab', { name: /Черновики/ }).click();

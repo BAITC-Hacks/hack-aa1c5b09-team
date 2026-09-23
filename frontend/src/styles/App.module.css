@@ -1,4 +1,75 @@
 .app { display: flex; min-height: 100vh; }
+.searchBanner { display: flex; flex-direction: column; align-items: center; padding: 48px; margin-bottom: 38px; border-radius: 16px; background: #f1ecff; text-align: center; }
+.searchBanner h2 { max-width: 760px; margin: 0 0 30px; color: #302b3e; font-size: clamp(30px, 3.2vw, 46px); font-weight: 800; line-height: 1.18; letter-spacing: -1.5px; }
+.searchBannerForm { position: relative; width: 100%; max-width: 600px; }
+.searchBannerForm input { width: 100%; min-height: 62px; padding: 17px 72px 17px 22px; border: 0; border-radius: 13px; background: white; box-shadow: 0 8px 28px #5f4a8f14; color: #302b3e; font-size: 14px; }
+.searchBannerForm input:focus { box-shadow: 0 0 0 3px #a990e033, 0 8px 28px #5f4a8f18; }
+.searchBannerForm button { position: absolute; top: 7px; right: 7px; display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 10px; background: var(--accent); color: white; transition: background .15s, transform .15s; }
+.searchBannerForm button:hover { background: var(--accent-dark); }
+.searchBannerForm button:active { transform: translateY(1px); }
+.searchBannerActions { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
+.searchBannerActions button { padding: 8px 13px; border: 0; border-radius: 999px; background: transparent; color: #776a88; font-size: 11px; font-weight: 600; transition: color .15s, background .15s; }
+.searchBannerActions button:hover { background: #e2d8fb; color: #5e49a8; }
+.catalogTools { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto auto; align-items: center; gap: 12px; margin-bottom: 24px; }
+.catalogSearch { display: flex; align-items: center; min-width: 0; padding-left: 13px; border: 1px solid #ece9f0; border-radius: 9px; background: #f8f7fa; color: #aaa3b2; }
+.catalogSearch:focus-within { outline: 2px solid #c8b9ed; }
+.catalogSearch input { width: 100%; padding: 12px 11px; border: 0; background: transparent; box-shadow: none; font-size: 12px; }
+.catalogSelect select { min-height: 43px; padding: 0 34px 0 13px; border: 1px solid #e5e1e9; border-radius: 9px; background: white; color: #665c6f; font-size: 12px; }
+.catalogSelect select:focus-visible { outline: 2px solid #baa3de; outline-offset: 2px; }
+.resultsCount { margin-left: auto; font-size: 11px; color: #8d7a9c; white-space: nowrap; }
+.catalogGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.catalogCard { display: flex; flex-direction: column; min-width: 0; padding: 23px 22px 0; border: 1px solid #eaeaea; border-radius: 12px; background: white; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.catalogCard:hover { transform: translateY(-2px); border-color: #ddd6e7; box-shadow: 0 10px 28px #372a4a0c; }
+.catalogCardCategory { color: #8f8598; font-size: 10px; font-weight: 600; }
+.catalogCard h2 { margin: 10px 0 9px; color: #3f3748; font-size: 17px; line-height: 1.45; letter-spacing: -.25px; overflow-wrap: anywhere; }
+.catalogCard > p { min-height: 54px; color: #837a8b; font-size: 12px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.catalogCardDetails { display: flex; flex-direction: column; gap: 9px; margin: 18px 0 21px; color: #746a7e; font-size: 11px; }
+.catalogCardDetails span, .catalogCard footer span { display: flex; align-items: center; gap: 7px; }
+.catalogCardDetails svg, .catalogCard footer svg { flex-shrink: 0; color: #afa5b8; }
+.catalogCard footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding: 15px 0; border-top: 1px solid #efedf1; color: #958c9d; font-size: 10px; }
+.catalogDetailGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 24px; }
+.ownerLine { display: flex; align-items: center; gap: 9px; margin-top: 16px; font-size: 11px; color: #897398; }
+.ownerLine strong { font-weight: 600; color: #695276; }
+.proposalColumn { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.proposalForm, .submittedProposal { padding: 25px; border: 1px solid #e5dbee; border-radius: 14px; background: white; }
+.proposalFormHeading { margin-bottom: 25px; }
+.proposalFormHeading h2 { font-size: 22px; letter-spacing: -.5px; }
+.proposalFormHeading p { margin-top: 10px; font-size: 12px; line-height: 1.8; }
+.proposalFields { padding: 0; border: 0; margin: 0; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.proposalFields label { display: block; font-size: 12px; color: #786285; font-weight: 600; }
+.proposalFields input, .proposalFields textarea { display: block; margin-top: 9px; font-size: 13px; font-weight: 400; }
+.proposalTermsFields { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.proposalTermsFields > label { min-width: 0; }
+.proposalPolicy { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; line-height: 1.8; margin: 20px 0; }
+.proposalPolicy svg { flex-shrink: 0; color: #a791bc; margin-top: 2px; }
+.submittedHeading { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; color: #6c9b7b; }
+.submittedHeading h2 { font-size: 19px; letter-spacing: -.3px; }
+.proposalSummary { margin: 21px 0 0; display: flex; flex-direction: column; gap: 18px; }
+.proposalSummary h3 { font-size: 11px; color: #8a7499; font-weight: 650; }
+.proposalSummary p { margin-top: 7px; font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.proposalSummary .offerTerms { flex-wrap: wrap; overflow-wrap: anywhere; }
+.proposalSummary .offerTerms span { min-width: 0; }
+.proposalSummary .offerTerms svg { flex-shrink: 0; }
+.proposalActions { margin-top: 22px; padding-top: 18px; border-top: 1px solid #ede5f4; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.proposalActions > a:not(.button) { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #9372b0; }
+.proposalActions .button { font-size: 11px; }
+.proposalTabs { margin-bottom: 24px; flex-wrap: wrap; }
+.myOffersGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.myOffersGrid .offerCard { display: flex; flex-direction: column; min-width: 0; }
+.myOffersGrid .proposalActions { margin-top: auto; }
+.myOffersGrid .proposalSummary { margin-bottom: 23px; }
+.myOfferTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.myOfferTop > span:first-child { font-size: 10px; color: #937aa5; }
+.myOfferTitle h2 { font-size: 19px; line-height: 1.5; letter-spacing: -.3px; overflow-wrap: anywhere; }
+.myOfferTitle:hover h2 { color: var(--accent); }
+.myOfferOwner { font-size: 11px; margin-top: 8px; }
+.newProvider { font-size: 9px; color: #8b7299; margin-left: auto; }
+@media (max-width: 1100px) { .catalogTools { grid-template-columns: minmax(240px, 1fr) auto auto; } .resultsCount { grid-column: 1 / -1; justify-self: end; } }
+@media (max-width: 960px) { .catalogDetailGrid, .myOffersGrid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .catalogTools { grid-template-columns: 1fr 1fr; } .catalogSearch, .resultsCount { grid-column: 1 / -1; } .catalogSelect select { width: 100%; } .resultsCount { justify-self: end; } .proposalTabs { overflow: auto; flex-wrap: nowrap; } .proposalForm { padding: 21px; } .proposalFields input, .proposalFields textarea { font-size: 16px; } }
+@media (max-width: 560px) { .catalogGrid { grid-template-columns: 1fr; gap: 14px; } .catalogCard { padding: 20px 19px 0; } .catalogCard h2 { font-size: 16px; } .catalogCard > p { min-height: auto; } .proposalTermsFields { grid-template-columns: 1fr; } .proposalActions { align-items: stretch; flex-direction: column; } .proposalActions > a:not(.button) { padding: 7px 0; } .proposalActions .button { width: 100%; } .submittedProposal { padding: 20px; } .newProvider { font-size: 8px; } }
+@media (max-width: 560px) { .searchBanner { padding: 34px 20px; margin-bottom: 28px; } .searchBanner h2 { margin-bottom: 24px; font-size: 32px; letter-spacing: -1px; } .searchBannerForm input { min-height: 58px; padding-left: 16px; padding-right: 66px; font-size: 12px; } .searchBannerForm button { width: 44px; height: 44px; } .searchBannerActions { gap: 7px; margin-top: 15px; } .searchBannerActions button { padding: 7px 9px; font-size: 9px; } }
+@media (max-height: 760px) { .sidebar .assistantTip { display: none; } }
 .sidebar { width: 236px; background: white; border-right: 1px solid var(--border); padding: 36px 20px 0; position: fixed; inset: 0 auto 0 0; display: flex; flex-direction: column; z-index: 30; }
 .brandLink { padding-left: 15px; width: fit-content; }
 .logo { display: inline-flex; align-items: center; color: #2d2945; font-size: 32px; font-weight: 800; letter-spacing: -1.8px; gap: 10px; }

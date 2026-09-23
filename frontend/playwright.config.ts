@@ -9,8 +9,8 @@ export default defineConfig({
   reporter: [['list']],
   use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
-    { name: 'desktop', testMatch: 'journey.spec.ts', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1024 }, baseURL: 'http://127.0.0.1:4173' } },
-    { name: 'mobile', testMatch: 'journey.spec.ts', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', baseURL: 'http://127.0.0.1:4173' } },
+    { name: 'desktop', testMatch: ['journey.spec.ts', 'marketplace.spec.ts'], use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1024 }, baseURL: 'http://127.0.0.1:4173' } },
+    { name: 'mobile', testMatch: ['journey.spec.ts', 'marketplace.spec.ts'], use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', baseURL: 'http://127.0.0.1:4173' } },
     { name: 'http', testMatch: 'http.spec.ts', use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4174' } },
   ],
   webServer: [

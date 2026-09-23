@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, ChevronRight, CircleHelp, FileText, LogOut, Menu, MessageSquare, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, ChevronRight, CircleHelp, ClipboardList, FileText, LayoutGrid, LogOut, Menu, MessageSquare, Plus, Sparkles, X } from 'lucide-react';
 import { api, isDemo } from '../api';
 import { Avatar, Button, ErrorNotice, Logo, Modal } from './ui';
 import type { User } from '../api/types';
@@ -14,8 +14,13 @@ export function Shell({ user }: { user: User }) {
   const client = useQueryClient();
   const requests = useQuery({ queryKey: ['requests'], queryFn: api.listRequests });
   const logout = useMutation({ mutationFn: api.logout, onSuccess: async () => { await client.cancelQueries(); client.setQueryData(['me'], null); client.removeQueries({ predicate: query => query.queryKey[0] !== 'me' }); } });
-  const section = location.pathname.startsWith('/messages') ? 'Сообщения' : location.pathname === '/' ? 'Мои заявки' : 'Мои заявки';
-  const nav = [ { to: '/', label: 'Мои заявки', icon: FileText }, { to: '/messages', label: 'Сообщения', icon: MessageSquare } ];
+  const nav = [
+    { to: '/', label: 'Мои потребности', icon: FileText },
+    { to: '/catalog', label: 'Каталог', icon: LayoutGrid },
+    { to: '/offers', label: 'Мои предложения', icon: ClipboardList },
+    { to: '/messages', label: 'Сообщения', icon: MessageSquare },
+  ];
+  const section = nav.find(item => item.to !== '/' && location.pathname.startsWith(item.to)) || nav[0];
   return <div className={s.app}>
     {menu && <button className={s.sidebarBackdrop} aria-label="Закрыть меню" onClick={() => setMenu(false)} />}
     <aside className={`${s.sidebar} ${menu ? s.sidebarOpen : ''}`}>
@@ -32,10 +37,10 @@ export function Shell({ user }: { user: User }) {
       </div>
     </aside>
     <div className={s.mainWrap}>
-      <header className={s.topbar}><div className={s.breadcrumb}><button className={`${s.iconButton} ${s.mobileMenu}`} aria-label="Открыть меню" onClick={() => setMenu(true)}><Menu size={22} /></button><span className={s.breadcrumbRoot}>Личное пространство</span><ChevronRight size={14} /><Link to={section === 'Сообщения' ? '/messages' : '/'}>{section}</Link>{location.pathname.startsWith('/requests/') && <><ChevronRight size={14} /><span>{location.pathname.endsWith('/new') ? 'Новая заявка' : 'Заявка'}</span></>}</div><div className={s.topbarRight}><button className={s.helpButton} onClick={() => setHelp(true)}><CircleHelp size={17} /><span>Помощь</span></button><span className={s.topbarDivider} /><Avatar name={user.name} size="small" /></div></header>
+      <header className={s.topbar}><div className={s.breadcrumb}><button className={`${s.iconButton} ${s.mobileMenu}`} aria-label="Открыть меню" onClick={() => setMenu(true)}><Menu size={22} /></button><span className={s.breadcrumbRoot}>Личное пространство</span><ChevronRight size={14} /><Link to={section.to}>{section.label}</Link>{(location.pathname.startsWith('/requests/') || location.pathname.startsWith('/catalog/')) && <><ChevronRight size={14} /><span>{location.pathname.endsWith('/new') ? 'Новая заявка' : 'Потребность'}</span></>}</div><div className={s.topbarRight}><button className={s.helpButton} onClick={() => setHelp(true)}><CircleHelp size={17} /><span>Помощь</span></button><span className={s.topbarDivider} /><Avatar name={user.name} size="small" /></div></header>
       <main className={s.main} id="main"><Outlet /></main>
       <footer className={s.footer}><span>Ясно — когда вас понимают.</span><span>От потребности к решению <Sparkles size={12} /></span></footer>
     </div>
-    {help && <Modal title="От мысли к решению" onClose={() => setHelp(false)}><div className={s.helpSteps}>{[['01', 'Расскажите, что вам нужно', 'Достаточно пары предложений. Не нужно заранее знать все детали.'], ['02', 'Уточните задачу вместе с ИИ', 'Ответьте на вопросы, проверьте карточку и опубликуйте её.'], ['03', 'Найдите своё решение', 'Обсуждайте предложения в отдельных чатах и выбирайте исполнителя.']].map(([n, title, text]) => <div key={n}><span>{n}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{isDemo && <p className={s.demoNote}>Это демонстрация: ИИ, предложения и ответы исполнителей заранее подготовлены. Данные сохраняются в этом браузере.</p>}<Button onClick={() => setHelp(false)}>Всё понятно</Button></Modal>}
+    {help && <Modal title="От мысли к решению" onClose={() => setHelp(false)}><div className={s.helpSteps}>{[['01', 'Расскажите, что вам нужно', 'Достаточно пары предложений. Не нужно заранее знать все детали.'], ['02', 'Уточните задачу вместе с ИИ', 'Ответьте на вопросы, проверьте карточку и опубликуйте её.'], ['03', 'Найдите своё решение', 'Обсуждайте предложения в отдельных чатах и выбирайте исполнителя.']].map(([n, title, text]) => <div key={n}><span>{n}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{isDemo && <p className={s.demoNote}>ИИ работает по демосценарию. В каталоге можно отправить своё предложение и обсудить его с заказчиком. Данные сохраняются в этом браузере.</p>}<Button onClick={() => setHelp(false)}>Всё понятно</Button></Modal>}
   </div>;
 }

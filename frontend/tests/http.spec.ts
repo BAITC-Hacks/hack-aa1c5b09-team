@@ -1,9 +1,49 @@
 import { expect, test } from '@playwright/test';
-import type { ChatMessage, NeedRequest, Offer } from '../src/api/types';
+import type { ChatMessage, NeedRequest, Offer, OfferInput, PublicNeed } from '../src/api/types';
 
 const user = { id: 'server-user', name: 'Тест', email: 'test@example.test' };
 const request: NeedRequest = { id: 'server-request', ownerId: user.id, status: 'published', card: { title: 'Настроить сайт кофейни', description: 'Нужно настроить меню и контакты на сайте', outcome: 'Работающий сайт с меню', category: 'Разработка', budget: '50 000 ₸', deadline: 'Неделя', format: 'Удалённо', location: '', requirements: '' }, initialText: 'Настроить сайт', messages: [], clarificationStep: 7, readyForReview: true, offerCount: 1, createdAt: '2026-09-23T08:00:00.000Z', updatedAt: '2026-09-23T08:00:00.000Z' };
 const offer: Offer = { id: 'server-offer', requestId: request.id, name: 'Анна Смирнова', initials: 'АС', specialty: 'Разработка', color: 'peach', description: 'Предлагаю настроить сайт за неделю.', price: '50 000 ₸', duration: '7 дней', rating: 4.9, reviews: 10 };
+
+test('HTTP: каталог, ошибка отправки предложения и повтор с тем же ключом', async ({ page }) => {
+  const published: PublicNeed = { id: request.id, ownerId: 'other-user', ownerName: 'Заказчик', status: 'published', card: request.card, createdAt: request.createdAt, updatedAt: request.updatedAt, offerCount: 0 };
+  let submitted: Offer | null = null;
+  const attempts: (OfferInput & { clientId: string })[] = [];
+  await page.route('http://127.0.0.1:4174/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    const ok = (json: unknown) => route.fulfill({ json });
+    if (path === '/api/auth/me') return ok(user);
+    if (path === '/api/requests') return ok([]);
+    if (path === '/api/catalog') return ok([published]);
+    if (path === `/api/catalog/${request.id}`) return ok({ request: published, myOffer: submitted });
+    if (path === '/api/offers/mine') return ok(submitted ? [{ offer: submitted, request: published, status: 'pending' }] : []);
+    if (path === `/api/requests/${request.id}/offers` && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON(); attempts.push(body);
+      if (attempts.length === 1) return route.fulfill({ status: 503, json: { message: 'Не удалось отправить предложение' } });
+      submitted = { ...offer, ...body, providerId: user.id, name: user.name, createdAt: new Date().toISOString() };
+      published.offerCount = 1;
+      return ok(submitted);
+    }
+    return route.fulfill({ status: 404, json: { message: 'Нет такого маршрута' } });
+  });
+  await page.goto('/catalog');
+  await page.getByRole('heading', { name: request.card.title }).click();
+  await page.getByLabel('Описание решения').fill('Сделаю сайт с меню и контактами');
+  await page.getByLabel('Способ реализации').fill('Прототип, дизайн и адаптивная вёрстка');
+  await page.getByLabel('Стоимость').fill('80 000 ₸');
+  await page.getByLabel('Сроки выполнения').fill('10 дней');
+  await page.getByRole('button', { name: 'Отправить предложение' }).click();
+  await expect(page.getByRole('alert')).toContainText('Не удалось отправить предложение');
+  await expect(page.getByLabel('Способ реализации')).toHaveValue('Прототип, дизайн и адаптивная вёрстка');
+  await page.getByRole('button', { name: 'Отправить предложение' }).click();
+  await expect(page.getByRole('heading', { name: 'Предложение отправлено' })).toBeVisible();
+  expect(attempts).toHaveLength(2);
+  expect(attempts[0]).toEqual(attempts[1]);
+  await page.goto('/offers');
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await expect(page.getByRole('article')).toContainText('Ожидает решения');
+  await expect(page.getByRole('article')).toContainText('Прототип, дизайн и адаптивная вёрстка');
+});
 
 test('HTTP: ошибка входа, повтор сообщения без потери текста, истечение сессии', async ({ page }) => {
   let signedIn = false;

@@ -38,7 +38,26 @@ export interface Offer {
   duration: string;
   rating: number;
   reviews: number;
+  providerId?: string;
+  method?: string;
+  createdAt?: string;
 }
+export interface PublicNeed {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  status: 'published' | 'selected';
+  card: NeedCard;
+  createdAt: string;
+  updatedAt: string;
+  offerCount: number;
+  selectedOfferId?: string;
+}
+export interface OfferInput { description: string; method: string; price: string; duration: string }
+export type OfferStatus = 'pending' | 'accepted' | 'not_selected';
+export interface MyOffer { offer: Offer; request: PublicNeed; status: OfferStatus }
+export interface CatalogDetail { request: PublicNeed; myOffer: Offer | null }
+export const offerStatusLabels: Record<OfferStatus, string> = { pending: 'Ожидает решения', accepted: 'Принято', not_selected: 'Выбран другой исполнитель' };
 export interface ChatMessage {
   id: string;
   clientId?: string;
@@ -55,6 +74,10 @@ export interface Api {
   register(input: Credentials & { name: string }): Promise<User>;
   logout(): Promise<void>;
   listRequests(): Promise<NeedRequest[]>;
+  listCatalog(): Promise<PublicNeed[]>;
+  getCatalogRequest(id: string): Promise<CatalogDetail>;
+  createOffer(requestId: string, input: OfferInput, clientId: string): Promise<Offer>;
+  listMyOffers(): Promise<MyOffer[]>;
   getRequest(id: string): Promise<NeedRequest>;
   createDraft(initialText: string, clientId: string): Promise<NeedRequest>;
   clarify(id: string, input: ClarificationInput): Promise<NeedRequest>;
