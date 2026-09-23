@@ -27,9 +27,16 @@ public class Need {
     @Column(precision = 14, scale = 2) private BigDecimal budgetAmount;
     @Column(length = 3) private String currency;
     private LocalDate deadline;
+    @Column(length = 250) private String category;
+    @Column(length = 250) private String budgetText;
+    @Column(length = 250) private String deadlineText;
+    @Column(length = 250) private String workFormat;
+    @Column(length = 250) private String location;
+    @Column(columnDefinition = "text") private String requirements;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30) private NeedStatus status;
     @Column(nullable = false) private Instant createdAt;
+    @Column(nullable = false) private Instant updatedAt;
     private UUID selectedProposalId;
     @Version private long version;
 
@@ -40,6 +47,7 @@ public class Need {
         this.ownerId = ownerId;
         status = NeedStatus.DRAFT;
         createdAt = Instant.now();
+        updatedAt = createdAt;
         update(originalDescription, card);
     }
 
@@ -54,22 +62,32 @@ public class Need {
         budgetAmount = card.budgetAmount();
         currency = card.currency();
         deadline = card.deadline();
+        category = card.category();
+        budgetText = card.budgetText();
+        deadlineText = card.deadlineText();
+        workFormat = card.workFormat();
+        location = card.location();
+        requirements = card.requirements();
+        updatedAt = Instant.now();
     }
 
     NeedCardDraft card() {
         return new NeedCardDraft(title, problem, expectedResult, acceptanceCriteria,
-                constraints, budgetAmount, currency, deadline);
+                constraints, budgetAmount, currency, deadline, category, budgetText, deadlineText,
+                workFormat, location, requirements);
     }
 
-    void publish() { status = NeedStatus.PUBLISHED; }
+    void publish() { status = NeedStatus.PUBLISHED; updatedAt = Instant.now(); }
     void select(UUID proposalId) {
         selectedProposalId = proposalId;
         status = NeedStatus.SOLUTION_SELECTED;
+        updatedAt = Instant.now();
     }
     UUID id() { return id; }
     UUID ownerId() { return ownerId; }
     String originalDescription() { return originalDescription; }
     NeedStatus status() { return status; }
     Instant createdAt() { return createdAt; }
+    Instant updatedAt() { return updatedAt; }
     UUID selectedProposalId() { return selectedProposalId; }
 }

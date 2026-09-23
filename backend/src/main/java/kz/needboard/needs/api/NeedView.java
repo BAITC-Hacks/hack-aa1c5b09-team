@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import kz.needboard.needs.NeedStatus;
 
-public record NeedView(UUID id, UUID ownerId,
+public record NeedView(UUID id, UUID ownerId, String ownerName,
         @JsonInclude(JsonInclude.Include.NON_NULL) String originalDescription,
-        NeedCardDraft card, NeedStatus status, Instant createdAt,
+        NeedCardDraft card, NeedStatus status, Instant createdAt, Instant updatedAt,
         UUID selectedProposalId, List<String> missingFields) {}

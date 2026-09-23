@@ -215,6 +215,53 @@ class BackendIntegrationTests {
     }
 
     @Test
+    void frontendFieldsAndChatRoundTripWithAccessControlAndReadOnlyState() throws Exception {
+        var owner = account("owner");
+        var first = account("first");
+        var second = account("second");
+        var outsider = account("outsider");
+        var payload = json.writeValueAsString(Map.of("originalDescription", "Нужен сайт", "card", Map.ofEntries(
+                Map.entry("title", "Сайт кофейни"), Map.entry("problem", "Нужны меню и контакты"),
+                Map.entry("expectedResult", "Готовый сайт"), Map.entry("acceptanceCriteria", List.of("Работает на телефоне")),
+                Map.entry("category", "Разработка"), Map.entry("budgetText", "До 100 000 ₸"),
+                Map.entry("deadlineText", "Две недели"), Map.entry("workFormat", "Удалённо"),
+                Map.entry("location", "Алматы"), Map.entry("requirements", "Адаптивная вёрстка"))));
+        var created = mvc.perform(post("/api/needs").session(owner.session()).with(csrf())
+                .contentType("application/json").content(payload)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ownerName").value("owner"))
+                .andExpect(jsonPath("$.card.category").value("Разработка"))
+                .andExpect(jsonPath("$.card.budgetText").value("До 100 000 ₸"))
+                .andExpect(jsonPath("$.card.requirements").value("Адаптивная вёрстка")).andReturn();
+        UUID need = UUID.fromString(body(created).path("id").asText());
+        publish(need, owner);
+        UUID selected = createProposal(need, first);
+        UUID rejected = createProposal(need, second);
+        mvc.perform(get("/api/needs/" + need + "/proposals").session(owner.session()))
+                .andExpect(jsonPath("$.items[0].authorName").exists());
+
+        UUID firstMessage = UUID.randomUUID();
+        var message = json.writeValueAsString(Map.of("clientId", firstMessage, "text", "Могу начать завтра"));
+        mvc.perform(post("/api/requests/" + need + "/offers/" + selected + "/messages")
+                .session(first.session()).with(csrf()).contentType("application/json").content(message))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].sender").value("provider"))
+                .andExpect(jsonPath("$[0].text").value("Могу начать завтра"));
+        mvc.perform(post("/api/requests/" + need + "/offers/" + selected + "/messages")
+                .session(first.session()).with(csrf()).contentType("application/json").content(message))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/requests/" + need + "/offers/" + selected + "/messages").session(owner.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].text").value("Могу начать завтра"));
+        mvc.perform(get("/api/requests/" + need + "/offers/" + selected + "/messages").session(outsider.session()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(post("/api/proposals/" + selected + "/accept").session(owner.session()).with(csrf()))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/requests/" + need + "/offers/" + rejected + "/messages")
+                .session(second.session()).with(csrf()).contentType("application/json")
+                .content(json.writeValueAsString(Map.of("clientId", UUID.randomUUID(), "text", "Ещё вопрос"))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHAT_READ_ONLY"));
+    }
+
+    @Test
     void concurrentAcceptanceCommitsOneWinnerOnPostgresql() throws Exception {
         var owner = account("owner");
         UUID need = createPublished(owner);

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import kz.needboard.common.ApiException;
 import kz.needboard.common.PageResponse;
+import kz.needboard.identity.UserService;
 import kz.needboard.needs.NeedService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,10 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProposalService {
     private final ProposalRepository proposals;
     private final NeedService needs;
+    private final UserService users;
 
-    public ProposalService(ProposalRepository proposals, NeedService needs) {
+    public ProposalService(ProposalRepository proposals, NeedService needs, UserService users) {
         this.proposals = proposals;
         this.needs = needs;
+        this.users = users;
     }
 
     @Transactional
@@ -29,16 +32,16 @@ public class ProposalService {
         if (proposals.existsByNeedIdAndAuthorId(needId, author)) {
             throw ApiException.conflict("PROPOSAL_EXISTS", "Вы уже предложили решение для этой потребности.");
         }
-        return proposals.saveAndFlush(new Proposal(needId, author, request)).view();
+        return view(proposals.saveAndFlush(new Proposal(needId, author, request)));
     }
 
     public PageResponse<ProposalView> forNeed(UUID needId, UUID actor, int page, int size) {
         needs.requireOwner(needId, actor);
-        return PageResponse.from(proposals.findByNeedId(needId, NeedService.paging(page, size)).map(Proposal::view));
+        return PageResponse.from(proposals.findByNeedId(needId, NeedService.paging(page, size)).map(this::view));
     }
 
     public PageResponse<ProposalView> mine(UUID actor, int page, int size) {
-        return PageResponse.from(proposals.findByAuthorId(actor, NeedService.paging(page, size)).map(Proposal::view));
+        return PageResponse.from(proposals.findByAuthorId(actor, NeedService.paging(page, size)).map(this::view));
     }
 
     @Transactional
@@ -53,7 +56,16 @@ public class ProposalService {
         proposals.flush();
         proposals.rejectOthers(proposal.needId(), proposal.id(), ProposalStatus.PENDING, ProposalStatus.REJECTED);
         needs.markSelected(proposal.needId(), proposal.id());
-        return proposal.view();
+        return view(proposal);
+    }
+
+    public ProposalAccess access(UUID id) {
+        var proposal = proposals.findById(id).orElseThrow(ApiException::notFound);
+        return new ProposalAccess(proposal.id(), proposal.needId(), proposal.authorId());
+    }
+
+    private ProposalView view(Proposal proposal) {
+        return proposal.view(users.displayName(proposal.authorId()));
     }
 
     private void validateTerms(ProposalRequest request) {
@@ -71,4 +83,6 @@ public class ProposalService {
     }
 
     private boolean blank(String value) { return value == null || value.isBlank(); }
+
+    public record ProposalAccess(UUID id, UUID needId, UUID authorId) {}
 }

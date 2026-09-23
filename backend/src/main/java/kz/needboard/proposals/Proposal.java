@@ -43,11 +43,12 @@ public class Proposal {
 
     UUID id() { return id; }
     UUID needId() { return needId; }
+    UUID authorId() { return authorId; }
     ProposalStatus status() { return status; }
     void accept() { status = ProposalStatus.ACCEPTED; }
 
-    ProposalView view() {
-        return new ProposalView(id, needId, authorId, solutionDescription, implementationPlan, expectedResult,
+    ProposalView view(String authorName) {
+        return new ProposalView(id, needId, authorId, authorName, solutionDescription, implementationPlan, expectedResult,
                 priceAmount, currency, priceNote, durationDays, scheduleNote, status, createdAt);
     }
 }

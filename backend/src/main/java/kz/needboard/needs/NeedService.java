@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 import kz.needboard.common.ApiException;
 import kz.needboard.common.PageResponse;
+import kz.needboard.identity.UserService;
 import kz.needboard.needs.api.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -19,10 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class NeedService {
     private final NeedRepository needs;
     private final NeedCardRules rules;
+    private final UserService users;
 
-    public NeedService(NeedRepository needs, NeedCardRules rules) {
+    public NeedService(NeedRepository needs, NeedCardRules rules, UserService users) {
         this.needs = needs;
         this.rules = rules;
+        this.users = users;
     }
 
     @Transactional
@@ -102,9 +105,14 @@ public class NeedService {
 
     private NeedView view(Need need, UUID actor) {
         var card = need.card();
-        return new NeedView(need.id(), need.ownerId(),
+        return new NeedView(need.id(), need.ownerId(), users.displayName(need.ownerId()),
                 need.ownerId().equals(actor) ? need.originalDescription() : null,
-                card, need.status(), need.createdAt(), need.selectedProposalId(), rules.missingFields(card));
+                card, need.status(), need.createdAt(), need.updatedAt(), need.selectedProposalId(), rules.missingFields(card));
+    }
+
+    public NeedChatAccess chatAccess(UUID id) {
+        var need = needs.findById(id).orElseThrow(ApiException::notFound);
+        return new NeedChatAccess(need.id(), need.ownerId(), need.status(), need.selectedProposalId());
     }
 
     public static PageRequest paging(int page, int size) {
@@ -115,4 +123,5 @@ public class NeedService {
     }
 
     public record NeedAccess(UUID id, UUID ownerId) {}
+    public record NeedChatAccess(UUID id, UUID ownerId, NeedStatus status, UUID selectedProposalId) {}
 }

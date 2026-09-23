@@ -3,6 +3,7 @@ package kz.needboard.identity;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import kz.needboard.common.ApiException;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,5 +47,10 @@ public class UserService implements UserDetailsService {
         var user = users.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown user"));
         return new UserPrincipal(user.getId(), user.getEmail(), user.getDisplayName(), user.getPasswordHash());
+    }
+
+    @Transactional(readOnly = true)
+    public String displayName(UUID id) {
+        return users.findById(id).map(UserAccount::getDisplayName).orElse("Пользователь");
     }
 }
