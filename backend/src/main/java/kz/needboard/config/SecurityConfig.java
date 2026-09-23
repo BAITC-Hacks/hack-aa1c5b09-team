@@ -53,7 +53,7 @@ public class SecurityConfig {
                 .securityContext(config -> config.securityContextRepository(contexts))
                 .requestCache(config -> config.requestCache(new NullRequestCache()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/needs", "/api/needs/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/needs", "/api/needs/*", "/api/providers/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())

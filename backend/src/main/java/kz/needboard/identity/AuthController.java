@@ -48,11 +48,17 @@ public class AuthController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         contexts.saveContext(context, httpRequest, httpResponse);
-        return UserView.from((UserPrincipal) authentication.getPrincipal());
+        return users.profile(((UserPrincipal) authentication.getPrincipal()).id());
     }
 
     @GetMapping("/me")
-    public UserView me() { return UserView.from(currentUser.require()); }
+    public UserView me() { return users.profile(currentUser.id()); }
+
+    @PutMapping("/me")
+    public UserView updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return users.updateProfile(currentUser.id(), request.displayName(), request.specialty(),
+                request.location(), request.bio());
+    }
 
     @GetMapping("/csrf")
     public CsrfView csrf(CsrfToken token) {
@@ -66,5 +72,10 @@ public class AuthController {
     public record LoginRequest(
             @NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(max = 72) String password) {}
+    public record UpdateProfileRequest(
+            @NotBlank @Size(min = 2, max = 100) String displayName,
+            @Size(max = 120) String specialty,
+            @Size(max = 120) String location,
+            @Size(max = 2000) String bio) {}
     public record CsrfView(String headerName, String token) {}
 }

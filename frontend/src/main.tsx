@@ -13,6 +13,7 @@ import { RequestDetail } from './pages/RequestDetail';
 import { Messages } from './pages/Messages';
 import { Catalog, CatalogDetailPage } from './pages/Catalog';
 import { MyOffers } from './pages/MyOffers';
+import { Profile, ProviderProfile } from './pages/Profile';
 import './styles/global.css';
 
 function onError(error: Error) { if (error instanceof ApiError && error.status === 401) queryClient.setQueryData(['me'], null); }
@@ -28,6 +29,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Auth key="login" user={user} />} />
       <Route path="/register" element={<Auth key="register" user={user} />} />
+      <Route path="/providers/:id" element={<ProviderProfile viewer={user} />} />
       <Route element={user ? <Shell user={user} /> : <Navigate to="/login" replace />}>
         <Route index element={user && <Dashboard user={user} />} />
         <Route path="requests/new" element={<NewRequest />} />
@@ -37,6 +39,7 @@ function App() {
         <Route path="catalog/:id" element={<CatalogDetailPage />} />
         <Route path="offers" element={<MyOffers />} />
         <Route path="messages" element={<Messages />} />
+        <Route path="profile" element={user && <Profile user={user} />} />
         <Route path="*" element={<div><h1>Страница не найдена</h1><p>Возможно, ссылка устарела.</p><Link to="/">Вернуться к потребностям</Link></div>} />
       </Route>
     </Routes>

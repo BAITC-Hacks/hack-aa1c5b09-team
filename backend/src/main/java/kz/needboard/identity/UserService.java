@@ -53,4 +53,29 @@ public class UserService implements UserDetailsService {
     public String displayName(UUID id) {
         return users.findById(id).map(UserAccount::getDisplayName).orElse("Пользователь");
     }
+
+    @Transactional(readOnly = true)
+    public UserView profile(UUID id) {
+        return UserView.from(users.findById(id).orElseThrow(ApiException::notFound));
+    }
+
+    @Transactional
+    public UserView updateProfile(UUID id, String displayName, String specialty, String location, String bio) {
+        var cleanName = displayName.strip();
+        if (cleanName.length() < 2) {
+            throw ApiException.validation(Map.of("displayName", "Имя должно содержать минимум 2 символа."));
+        }
+        var user = users.findById(id).orElseThrow(ApiException::notFound);
+        user.updateProfile(cleanName, optional(specialty), optional(location), optional(bio));
+        return UserView.from(user);
+    }
+
+    @Transactional(readOnly = true)
+    public ProviderProfileView providerProfile(UUID id) {
+        return ProviderProfileView.from(users.findById(id).orElseThrow(ApiException::notFound));
+    }
+
+    private static String optional(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
 }

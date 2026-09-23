@@ -98,6 +98,38 @@ class BackendIntegrationTests {
     }
 
     @Test
+    void profileUpdatesRequireOwnerAndPublicProviderViewHidesEmail() throws Exception {
+        var owner = account("owner");
+        var outsider = account("outsider");
+        String path = "/api/providers/" + owner.id();
+        mvc.perform(get(path)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("owner"))
+                .andExpect(jsonPath("$.email").doesNotExist());
+        var payload = json.writeValueAsString(Map.of("displayName", "Новый автор", "specialty", "Дизайн",
+                "location", "Алматы", "bio", "Создаю понятные решения."));
+        mvc.perform(put("/api/auth/me").with(csrf()).contentType("application/json").content(payload))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/auth/me").session(owner.session()).contentType("application/json").content(payload))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/auth/me").session(owner.session()).with(csrf())
+                .contentType("application/json").content(payload)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Новый автор"))
+                .andExpect(jsonPath("$.email").value("owner@example.com"));
+        mvc.perform(get("/api/auth/me").session(owner.session())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.bio").value("Создаю понятные решения."));
+        mvc.perform(get(path)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Новый автор"))
+                .andExpect(jsonPath("$.specialty").value("Дизайн"))
+                .andExpect(jsonPath("$.location").value("Алматы"))
+                .andExpect(jsonPath("$.email").doesNotExist());
+        mvc.perform(get("/api/auth/me").session(outsider.session())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("outsider"));
+        mvc.perform(put("/api/auth/me").session(owner.session()).with(csrf())
+                .contentType("application/json").content("{\"displayName\":\"x\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void multibytePasswordLimitIsValidatedInBothRegistrationAndLogin() throws Exception {
         String longPassword = "я".repeat(40);
         mvc.perform(post("/api/auth/register").with(csrf()).contentType("application/json")

@@ -1,0 +1,47 @@
+.personalPage { max-width: 1100px; margin: 0 auto; }
+.eyebrow { color: #9588a8; font-size: 10px; font-weight: 750; letter-spacing: 1.4px; }
+.heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 12px 0 27px; }
+.heading h1 { color: #40344e; font-size: clamp(27px, 3vw, 35px); letter-spacing: -1px; }
+.heading p { color: #92899e; font-size: 12px; margin-top: 8px; line-height: 1.7; }
+.publicLink { display: inline-flex; align-items: center; gap: 7px; color: #6b55c6; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.publicLink:hover, .backLink:hover { color: #4e36ad; text-decoration: underline; }
+.personalGrid { display: grid; grid-template-columns: minmax(0, 1fr) 270px; align-items: start; gap: 20px; }
+.card, .activity, .publicCard { background: white; border: 1px solid #e9e5f0; border-radius: 15px; box-shadow: 0 10px 30px #3c254208; }
+.card { padding: 28px; }
+.identity { display: flex; align-items: center; gap: 14px; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid #eeeaf3; }
+.identity h2 { color: #4e3c5f; font-size: 17px; }
+.identity span:last-child { display: block; color: #9c90a7; font-size: 11px; margin-top: 5px; }
+.fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 19px; }
+.fieldGrid label { color: #675772; font-size: 11px; font-weight: 700; }
+.fieldGrid input, .fieldGrid textarea { display: block; margin-top: 8px; font-weight: 450; font-size: 12px; }
+.fieldGrid input[readonly] { color: #80778b; background: #f8f7fa; }
+.fullField { grid-column: 1 / -1; }
+.hint { margin-top: 16px; color: #9b91a4; font-size: 10px; line-height: 1.7; }
+.formActions { display: flex; align-items: center; gap: 15px; margin-top: 24px; }
+.saved { color: #619477; font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
+.activity { padding: 24px; }
+.activity h2 { color: #4e3c5f; font-size: 17px; }
+.activity > p { color: #9b91a4; font-size: 11px; line-height: 1.7; margin: 7px 0 20px; }
+.activity a { display: flex; align-items: center; gap: 10px; border-top: 1px solid #f0edf4; padding: 15px 0; color: #695779; }
+.activity a:hover { color: #6955db; }
+.activity a > span:nth-child(2) { flex: 1; }
+.activity strong, .activity small { display: block; }
+.activity strong { font-size: 11px; }
+.activity small { color: #a097ab; font-size: 10px; margin-top: 4px; }
+.activityIcon { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 9px; background: #f3effb; color: #8c76bc; }
+.publicPage { min-height: 100dvh; background: #f8f7fc; }
+.publicHeader { height: 78px; padding: 0 max(28px, calc((100vw - 1100px) / 2)); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eae5f2; background: white; }
+.publicHeader > a:last-child { display: inline-flex; align-items: center; gap: 8px; color: #75688a; font-size: 11px; font-weight: 700; }
+.publicMain { max-width: 850px; margin: 0 auto; padding: 36px 24px 80px; }
+.backLink { display: inline-flex; align-items: center; gap: 8px; color: #9587a2; font-size: 11px; margin-bottom: 25px; }
+.publicCard { padding: 36px; }
+.publicHero { display: flex; align-items: center; gap: 18px; padding-bottom: 27px; border-bottom: 1px solid #eeeaf3; }
+.publicHero > span:first-child { width: 65px; height: 65px; font-size: 20px; }
+.publicHero h1 { color: #433550; font-size: clamp(24px, 4vw, 34px); margin: 8px 0 4px; }
+.publicHero p { color: #947aa8; font-size: 13px; }
+.location { display: inline-flex; align-items: center; gap: 7px; margin-top: 24px; color: #887593; font-size: 12px; }
+.about { margin: 26px 0; }
+.about h2 { font-size: 17px; color: #4e3c5f; margin-bottom: 10px; }
+.about p { color: #74677c; font-size: 13px; line-height: 1.85; white-space: pre-wrap; }
+@media (max-width: 850px) { .personalGrid { grid-template-columns: 1fr; } .activity { display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px; } .activity h2, .activity > p { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .heading { align-items: start; flex-direction: column; } .card, .activity, .publicCard { padding: 20px; } .fieldGrid, .activity { grid-template-columns: 1fr; } .publicHeader { height: 68px; padding: 0 20px; } .publicHeader > a:last-child { font-size: 10px; } .publicMain { padding: 28px 18px 60px; } .publicHero { align-items: flex-start; } }

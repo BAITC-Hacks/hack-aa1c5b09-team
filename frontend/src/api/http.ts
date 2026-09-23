@@ -1,9 +1,10 @@
 import { ApiError, emptyCard } from './types';
-import type { AiMessage, Api, ChatMessage, NeedCard, NeedRequest, Offer, PublicNeed, User } from './types';
+import type { AiMessage, Api, ChatMessage, NeedCard, NeedRequest, Offer, ProviderProfile, PublicNeed, User } from './types';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 
-type ServerUser = { id: string; email: string; displayName: string };
+type ServerUser = { id: string; email: string; displayName: string; specialty?: string | null; location?: string | null; bio?: string | null };
+type ServerProvider = Omit<ServerUser, 'email'>;
 type Page<T> = { items: T[] };
 type ServerCard = {
   title: string | null;
@@ -73,7 +74,8 @@ function writeState(id: string, state: ClarificationState) {
   try { localStorage.setItem(stateKey(id), JSON.stringify(state)); }
   catch { throw new ApiError('Не удалось сохранить диалог в браузере.', 503); }
 }
-function user(value: ServerUser): User { return { id: value.id, email: value.email, name: value.displayName }; }
+function user(value: ServerUser): User { return { id: value.id, email: value.email, name: value.displayName, specialty: text(value.specialty), location: text(value.location), bio: text(value.bio) }; }
+function provider(value: ServerProvider): ProviderProfile { return { id: value.id, name: value.displayName, specialty: text(value.specialty), location: text(value.location), bio: text(value.bio) }; }
 function text(value: string | null | undefined) { return value || ''; }
 function money(value: number | null, currency: string | null) {
   if (value == null) return '';
@@ -187,6 +189,10 @@ export const httpApi: Api = {
     return this.login({ email: input.email, password: input.password });
   },
   async logout() { await post('/auth/logout'); csrf = null; },
+  async updateProfile(input) {
+    return user(await fetchJson<ServerUser>('/auth/me', { method: 'PUT', ...body({ displayName: input.name, specialty: input.specialty, location: input.location, bio: input.bio }) }));
+  },
+  async getProviderProfile(id) { return provider(await fetchJson<ServerProvider>(`/providers/${encodeURIComponent(id)}`)); },
   async listRequests() { const page = await fetchJson<Page<ServerNeed>>('/me/needs?size=100'); return page.items.map(requestNeed); },
   async listCatalog() {
     const [page, me] = await Promise.all([fetchJson<Page<ServerNeed>>('/needs?size=100'), fetchJson<ServerUser>('/auth/me')]);

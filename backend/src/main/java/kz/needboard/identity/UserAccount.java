@@ -15,6 +15,12 @@ public class UserAccount {
     private String passwordHash;
     @Column(nullable = false, length = 100)
     private String displayName;
+    @Column(length = 120)
+    private String specialty;
+    @Column(length = 120)
+    private String location;
+    @Column(length = 2000)
+    private String bio;
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -32,4 +38,14 @@ public class UserAccount {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
+    public String getSpecialty() { return specialty; }
+    public String getLocation() { return location; }
+    public String getBio() { return bio; }
+
+    void updateProfile(String displayName, String specialty, String location, String bio) {
+        this.displayName = displayName;
+        this.specialty = specialty;
+        this.location = location;
+        this.bio = bio;
+    }
 }

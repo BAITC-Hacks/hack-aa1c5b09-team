@@ -41,7 +41,7 @@ function initialDatabase(): Database {
 function seedCatalog(db: Database): Database {
   if (db.catalogSeeded) return db;
   const owner: User = { id: 'demo-customer', name: 'Ольга Соколова', email: 'olga@yasno.app' };
-  const provider: User = { id: 'demo-provider', name: 'Алиса Миронова', email: 'provider@yasno.app' };
+  const provider: User = { id: 'demo-provider', name: 'Алиса Миронова', email: 'provider@yasno.app', specialty: 'Дизайн и визуальные решения', location: 'Алматы', bio: 'Помогаю превращать идеи в понятные визуальные решения. Люблю ясные задачи и открытый диалог с заказчиком.' };
   for (const user of [owner, provider]) if (!db.users.some(item => item.id === user.id)) db.users.push(user);
   const cards = [
     { id: 'catalog-site', card: { title: 'Сайт для небольшой цветочной мастерской', description: 'Создаём букеты на заказ. Нужен небольшой сайт, где клиенты смогут посмотреть работы и связаться с нами.', outcome: 'Адаптивный сайт с каталогом букетов, контактами и формой заявки.', category: 'Разработка', budget: 'До 180 000 ₸', deadline: 'В течение трёх недель', format: 'Удалённо', location: '', requirements: 'Простое обновление фотографий без помощи разработчика.' } },
@@ -139,6 +139,31 @@ export const mockApi: Api = {
     return user;
   },
   async logout() { await pause(); localStorage.removeItem(SESSION_KEY); },
+  async updateProfile(input) {
+    await pause(); const db = read(); const user = requireUser(db);
+    const name = input.name.trim();
+    const specialty = input.specialty.trim();
+    const location = input.location.trim();
+    const bio = input.bio.trim();
+    if (name.length < 2 || name.length > 100 || specialty.length > 120 || location.length > 120 || bio.length > 2000) {
+      throw new ApiError('Проверьте имя и поля профиля.', 422);
+    }
+    Object.assign(user, { name, specialty, location, bio });
+    for (const offer of db.offers.filter(item => item.providerId === user.id)) {
+      offer.name = name;
+      offer.initials = name.split(' ').map(part => part[0]).slice(0, 2).join('');
+    }
+    save(db);
+    return { ...user };
+  },
+  async getProviderProfile(id) {
+    await pause(); const db = read();
+    const user = db.users.find(item => item.id === id);
+    if (user) return { id: user.id, name: user.name, specialty: user.specialty || '', location: user.location || '', bio: user.bio || '' };
+    const demoOffer = db.offers.find(item => item.id === id && !item.providerId);
+    if (demoOffer) return { id, name: demoOffer.name, specialty: demoOffer.specialty, location: '', bio: demoOffer.description };
+    throw new ApiError('Профиль исполнителя не найден.', 404);
+  },
   async listRequests() {
     await pause(); const db = read(); const user = requireUser(db);
     return db.requests.filter(item => item.ownerId === user.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

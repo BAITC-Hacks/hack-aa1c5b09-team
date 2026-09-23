@@ -1,4 +1,6 @@
-export interface User { id: string; name: string; email: string }
+export interface User { id: string; name: string; email: string; specialty?: string; location?: string; bio?: string }
+export interface ProfileInput { name: string; specialty: string; location: string; bio: string }
+export interface ProviderProfile { id: string; name: string; specialty: string; location: string; bio: string }
 export type RequestStatus = 'draft' | 'published' | 'selected';
 export interface NeedCard {
   title: string;
@@ -73,6 +75,8 @@ export interface Api {
   login(input: Credentials): Promise<User>;
   register(input: Credentials & { name: string }): Promise<User>;
   logout(): Promise<void>;
+  updateProfile(input: ProfileInput): Promise<User>;
+  getProviderProfile(id: string): Promise<ProviderProfile>;
   listRequests(): Promise<NeedRequest[]>;
   listCatalog(): Promise<PublicNeed[]>;
   getCatalogRequest(id: string): Promise<CatalogDetail>;

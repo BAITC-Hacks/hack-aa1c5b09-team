@@ -102,6 +102,10 @@
 .demoBadge { display: flex; align-items: center; justify-content: center; font-size: 9px; gap: 7px; color: #9994a7; margin: 20px 0; }
 .demoBadge i { width: 5px; height: 5px; border-radius: 50%; background: #b3a5e3; }
 .profile { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding: 20px 0; }
+.profileLink { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.profileLink:hover strong { color: var(--accent); }
+.profileLink > span:last-child { min-width: 0; }
+.profileLink small { display: block; color: #aaa5b2; font-size: 9px; }
 .profile > div { flex: 1; min-width: 0; }
 .profile strong { display: block; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-bottom: 4px; }
 .profile div > span { color: #aaa5b2; font-size: 9px; }
@@ -414,6 +418,9 @@
 .offerTerms > span { display: inline-flex; align-items: center; gap: 8px; }
 .offerTerms strong { color: #9a7eae; }
 .offerActions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f1eaf6; padding-top: 17px; margin-top: 18px; align-items: center; }
+.offerProfileLink:hover { color: var(--accent); text-decoration: underline; }
+.providerAction { color: #8d70ad; font-size: 10px; font-weight: 700; margin-right: auto; }
+.providerAction:hover { color: var(--accent); text-decoration: underline; }
 .offerActions .button { font-size: 10px; padding: 10px 13px; }
 .chosenLabel { display: inline-flex; gap: 6px; align-items: center; font-size: 10px; color: #ab87c8; font-weight: 650; }
 .chatPanel { border: 1px solid #e5dced; border-radius: 13px; background: white; overflow: hidden; position: sticky; top: 20px; min-width: 0; }

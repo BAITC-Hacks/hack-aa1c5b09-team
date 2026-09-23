@@ -91,3 +91,40 @@ test('HTTP-регистрация входит в сессию и публику
   await expect(browser.getByText('Ваша задача ждёт своего человека')).toBeVisible();
   expect(updateBody?.card).toMatchObject({ title: 'Сайт кофейни', expectedResult: 'Готовый сайт с меню', category: 'Разработка', budgetText: '100 000 ₸', workFormat: 'Удалённо', location: 'Алматы', requirements: 'Адаптация под телефон', acceptanceCriteria: ['Готовый сайт с меню'] });
 });
+
+test('HTTP-профиль сохраняется с CSRF и публично открывается без сессии', async ({ page: browser }) => {
+  let signedIn = true;
+  let updated = { ...serverUser, specialty: '', location: '', bio: '' };
+  await browser.route('http://127.0.0.1:4174/api/**', async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const ok = (json: unknown) => route.fulfill({ json });
+    if (url.pathname === '/api/auth/csrf') return ok(csrf);
+    if (url.pathname === '/api/auth/me' && request.method() === 'GET') return signedIn ? ok(updated) : route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } });
+    if (url.pathname === '/api/auth/me' && request.method() === 'PUT') {
+      expect(request.headers()['x-csrf-token']).toBe(csrf.token);
+      const body = request.postDataJSON();
+      expect(body).toMatchObject({ displayName: 'Новый автор', specialty: 'Дизайн', location: 'Алматы', bio: 'Делаю удобные сайты.' });
+      updated = { ...updated, ...body };
+      return ok(updated);
+    }
+    if (url.pathname === `/api/providers/${serverUser.id}`) {
+      const { email: _email, ...publicProfile } = updated;
+      return ok(publicProfile);
+    }
+    if (url.pathname === '/api/me/needs' || url.pathname === '/api/me/proposals') return ok(page([]));
+    return route.fulfill({ status: 404, json: { code: 'NOT_FOUND' } });
+  });
+  await browser.goto('/profile');
+  await browser.getByLabel('Имя и фамилия').fill('Новый автор');
+  await browser.getByLabel('Специализация').fill('Дизайн');
+  await browser.getByLabel('Город').fill('Алматы');
+  await browser.getByLabel('О себе').fill('Делаю удобные сайты.');
+  await browser.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(browser.getByRole('status').filter({ hasText: 'Сохранено' })).toBeVisible();
+  signedIn = false;
+  await browser.goto(`/providers/${serverUser.id}`);
+  await expect(browser.getByRole('heading', { name: 'Новый автор' })).toBeVisible();
+  await expect(browser.getByText('Делаю удобные сайты.')).toBeVisible();
+  await expect(browser.getByText(serverUser.email)).toHaveCount(0);
+});

@@ -126,3 +126,27 @@ test('пропуск вопросов не выдумывает данные, п
   await page.getByLabel('Ожидаемый результат').fill('Уверенно общаться в аэропорту и отеле');
   await expect(page.getByRole('button', { name: 'Опубликовать заявку' })).toBeEnabled();
 });
+
+test('личный и публичный профиль: сохранение и переход из предложения', async ({ page }) => {
+  await demo(page);
+  await page.getByRole('link', { name: 'Открыть мой профиль' }).last().click();
+  await expect(page.getByRole('heading', { name: 'Мой профиль' })).toBeVisible();
+  await expect(page.getByLabel('Email')).toHaveValue('demo@yasno.app');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByLabel('Имя и фамилия').fill('Александр Сариев');
+  await page.getByLabel('Специализация').fill('Графический дизайн');
+  await page.getByLabel('Город').fill('Алматы');
+  await page.getByLabel('О себе').fill('Помогаю создавать понятные визуальные решения.');
+  await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Сохранено' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Имя и фамилия')).toHaveValue('Александр Сариев');
+  await page.getByRole('link', { name: /Посмотреть публичный профиль/ }).click();
+  await expect(page.getByRole('heading', { name: 'Александр Сариев' })).toBeVisible();
+  await expect(page.getByText('Помогаю создавать понятные визуальные решения.')).toBeVisible();
+  await expect(page.getByText('demo@yasno.app')).toHaveCount(0);
+  await page.goto('/requests/demo-brand');
+  await page.getByRole('article').filter({ hasText: 'Анна Смирнова' }).getByRole('link', { name: 'Профиль исполнителя', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Анна Смирнова' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
